@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO tadgh_blog.blog_posts (title, blog_date, description, image_path, file_name)\n        VALUES ($1, $2, $3, $4, $5)\n        RETURNING id, title, blog_date, description, image_path, file_name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "blog_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "image_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "file_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Date",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "f71f879fa0e5da0b76bdd82b4168c98811e6ab5fb5ca7d8b6d582ea9739a8cfc"
+}

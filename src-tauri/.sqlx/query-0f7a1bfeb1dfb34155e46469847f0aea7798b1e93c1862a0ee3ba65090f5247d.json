@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE tadgh_blog.projects\n        SET title = $1,\n            project_description = $2,\n            image_path = $3,\n            project_url = $4,\n            date_created = $5,\n            project_status = $6,\n            license = $7\n        WHERE id = $8\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Date",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0f7a1bfeb1dfb34155e46469847f0aea7798b1e93c1862a0ee3ba65090f5247d"
+}

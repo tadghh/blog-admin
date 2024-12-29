@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT t.id, t.name\n        FROM tadgh_blog.tags t\n        JOIN tadgh_blog.blog_post_tags bpt ON bpt.tag_id = t.id\n        WHERE bpt.blog_post_id = $1\n        ORDER BY t.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "27c3bb943d9e0babb0034750f6f8f93d5dae1668c6e2a581e42d22b381cf55ba"
+}
