@@ -21,7 +21,7 @@
 		"security": {
 			"csp": {
 				"default-src": "'self'",
-				"img-src": "'self' asset: https: data: file:",
+				"img-src": "'self' asset: http://asset.localhost https: data: file:",
 				"style-src": "'self' 'unsafe-inline'",
 				"script-src": "'self' 'unsafe-eval'",
 				"connect-src": "'self'"
@@ -34,10 +34,20 @@
 						"core:default",
 						"dialog:allow-open",
 						"dialog:allow-ask",
-
+						"fs:allow-read",
+						"fs:read-all",
+						"fs:read-dirs",
 						"fs:default",
 						{
 							"identifier": "fs:allow-write-file",
+							"allow": [
+								{
+									"path": "**"
+								}
+							]
+						},
+						{
+							"identifier": "fs:scope",
 							"allow": [
 								{
 									"path": "**"

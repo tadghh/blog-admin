@@ -113,7 +113,6 @@ async fn save_settings(settings: Settings, app: tauri::AppHandle) -> Result<(), 
     .await
     .expect("Failed to write settings");
 
-    println!("Settings saved at: {:?}", settings_path);
     Ok(())
 }
 
@@ -221,6 +220,7 @@ async fn add_tags_to_project(
     }
     Ok(())
 }
+
 #[tauri::command]
 async fn update_blog_tags(
     state: State<'_, Mutex<AppState>>,
@@ -431,6 +431,7 @@ async fn create_project(
     .await
     .map_err(|e| e.to_string())
 }
+
 #[tauri::command]
 async fn update_blog_post(
     state: State<'_, Mutex<AppState>>,
@@ -542,7 +543,7 @@ async fn connect_db(
     connection_config: ConnectionConfig,
 ) -> Result<bool, String> {
     let pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(1)
         .connect(&connection_config.connection_string)
         .await
         .map_err(|e| e.to_string())?;

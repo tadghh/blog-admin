@@ -18,6 +18,8 @@ const DatabaseConnection = ({ onConnected }: DatabaseConnectionProps) => {
 		e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
 	) => {
 		const { name, value, type } = e.target;
+
+		// Maybe add reverse ssh checkbox later
 		const newValue =
 			type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
 		setFormData((prev) => ({
@@ -25,18 +27,18 @@ const DatabaseConnection = ({ onConnected }: DatabaseConnectionProps) => {
 			[name]: newValue,
 		}));
 	};
+
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		setLoading(true);
 		setError("");
 
 		try {
-			const connectionString = `postgres://${formData.username}:${formData.password}@${formData.host}:${formData.port}/${formData.database}`;
-			const connectionConfig = {
-				connection_string: connectionString,
-			};
-			console.log(connectionConfig);
-			await invoke("connect_db", { connectionConfig: connectionConfig });
+			await invoke("connect_db", {
+				connectionConfig: {
+					connection_string: `postgres://${formData.username}:${formData.password}@${formData.host}:${formData.port}/${formData.database}`,
+				},
+			});
 			onConnected(true);
 		} catch (err) {
 			setError((err as Error).toString());
