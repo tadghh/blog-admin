@@ -6,6 +6,7 @@ import Settings from "./settings";
 import DatabaseConnection from "./bootup";
 import { useState } from "react";
 import TagManagement from "./tag-management";
+import CategoryManagement from "./category-management";
 
 function App() {
 	const [isConnected, setIsConnected] = useState(false);
@@ -41,6 +42,11 @@ function App() {
 									className="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-blue-500">
 									Tags
 								</Link>
+								<Link
+									to="/categories"
+									className="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-blue-500">
+									Categories
+								</Link>
 							</div>
 						</div>
 					</div>
@@ -54,6 +60,7 @@ function App() {
 						<Route path="/" element={<AdminForms />} />
 						<Route path="/settings" element={<Settings />} />
 						<Route path="/tags" element={<TagManagement />} />
+						<Route path="/categories" element={<CategoryManagement />} />
 					</Routes>
 				</div>
 			</div>
