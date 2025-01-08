@@ -14,20 +14,11 @@ const CategoryManagement = () => {
 	const [tagsByCategory, setTagsByCategory] = useState<Record<number, Tag[]>>(
 		{}
 	);
-	const [allTags, setAllTags] = useState<Tag[]>([]);
+
 	useEffect(() => {
 		fetchCategories();
-		fetchAllTags();
 	}, []);
-	const fetchAllTags = async () => {
-		try {
-			const fetchedTags = await invoke<Tag[]>("get_tags");
-			setAllTags(fetchedTags);
-		} catch (err) {
-			setError("Failed to fetch tags");
-			console.error(err);
-		}
-	};
+
 	const fetchCategories = async () => {
 		try {
 			const fetchedCategories = await invoke<Category[]>("get_categories");
@@ -52,6 +43,7 @@ const CategoryManagement = () => {
 			setLoading(false);
 		}
 	};
+
 	const createCategory = async () => {
 		if (!newCategoryName.trim()) return;
 
@@ -95,13 +87,10 @@ const CategoryManagement = () => {
 			);
 		} catch (err) {
 			setError("Failed to update category");
-			console.error(err);
 		}
 	};
 
 	const deleteCategory = async (id: number) => {
-		if (!confirm("Are you sure you want to delete this category?")) return;
-
 		try {
 			await invoke("delete_category", { id });
 			setCategories(categories.filter((category) => category.id !== id));
@@ -109,7 +98,6 @@ const CategoryManagement = () => {
 			setTagsByCategory(remainingTags);
 		} catch (err) {
 			setError("Failed to delete category");
-			console.error(err);
 		}
 	};
 

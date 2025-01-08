@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM tadgh_blog.tag_categories WHERE tag_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cbac1369cd51888bec9068f38f2ad0af2fd91088d71760da1316eb5194d8980d"
+}
