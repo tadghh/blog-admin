@@ -86,7 +86,9 @@ async fn main() {
             update_tag_categories,
             update_category_tags,
             remove_category_from_tag,
-            get_category_tags
+            get_category_tags,
+            delete_blog_post,
+            delete_project
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

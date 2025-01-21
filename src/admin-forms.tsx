@@ -115,7 +115,7 @@ const AdminForms = () => {
 			const createdBlogData = await invoke<BlogPost>("create_blog_post", {
 				blogPost: formattedBlogPost,
 			});
-			console.log(createdBlogData.id);
+
 			if (selectedTags.length > 0) {
 				await invoke("add_tags_to_blog", {
 					blogId: createdBlogData.id,
@@ -154,10 +154,11 @@ const AdminForms = () => {
 			const createdProjectData = await invoke<Project>("create_project", {
 				project,
 			});
+			console.log(createdProjectData);
 			if (selectedTags.length > 0) {
 				await invoke("add_tags_to_project", {
-					project_id: createdProjectData.id,
-					tag_ids: selectedTags.map((tag) => tag.id),
+					projectId: createdProjectData.id,
+					tagIds: selectedTags.map((tag) => tag.id),
 				});
 			}
 			setSelectedTags([]);
@@ -306,7 +307,8 @@ const AdminForms = () => {
 							type="submit"
 							disabled={loading}
 							className={`w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-								loading ? "opacity-50 cursor-not-allowed" : ""}`}>
+								loading ? "opacity-50 cursor-not-allowed" : ""
+							}`}>
 							{loading ? "Submitting..." : "Submit"}
 						</button>
 					</form>
@@ -424,7 +426,8 @@ const AdminForms = () => {
 							type="submit"
 							disabled={loading}
 							className={`w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-								loading ? "opacity-50 cursor-not-allowed" : ""}`}>
+								loading ? "opacity-50 cursor-not-allowed" : ""
+							}`}>
 							{loading ? "Submitting..." : "Submit"}
 						</button>
 					</form>

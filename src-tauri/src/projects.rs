@@ -42,6 +42,28 @@ pub async fn get_projects(state: State<'_, Mutex<AppState>>) -> Result<Vec<Proje
     .await
     .map_err(|e| e.to_string())
 }
+#[tauri::command]
+pub async fn delete_project(
+    state: State<'_, Mutex<AppState>>,
+    project_id: i32,
+) -> Result<(), String> {
+    let state = state.lock().await;
+    let pool = state.pool.as_ref().ok_or("Database not connected")?;
+
+    sqlx::query!(
+        r#"
+        DELETE FROM tadgh_blog.projects
+        WHERE id = $1
+        "#,
+        project_id
+    )
+    .execute(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 
 #[tauri::command]
 pub async fn create_project(

@@ -101,3 +101,24 @@ pub async fn update_blog_post(
 
     Ok(())
 }
+#[tauri::command]
+pub async fn delete_blog_post(
+    state: State<'_, Mutex<AppState>>,
+    blog_post_id: i32,
+) -> Result<(), String> {
+    let state = state.lock().await;
+    let pool = state.pool.as_ref().ok_or("Database not connected")?;
+
+    sqlx::query!(
+        r#"
+        DELETE FROM tadgh_blog.blog_posts
+        WHERE id = $1
+        "#,
+        blog_post_id
+    )
+    .execute(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
+}

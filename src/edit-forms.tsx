@@ -195,10 +195,10 @@ const EditForms = () => {
 		setLoading(true);
 		try {
 			if (type === "blog") {
-				await invoke("delete_blog_post", { id });
+				await invoke("delete_blog_post", { blogPostId: id });
 				setBlogPosts(blogPosts.filter((post) => post.id !== id));
 			} else {
-				await invoke("delete_project", { id });
+				await invoke("delete_project", { projectId: id });
 				setProjects(projects.filter((project) => project.id !== id));
 			}
 		} catch (err) {
