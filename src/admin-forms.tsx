@@ -38,7 +38,6 @@ const AdminForms = () => {
 
 	const loadSettings = async () => {
 		const saved = await invoke<Settings>("load_settings");
-		console.log(saved);
 		setSettings(saved);
 	};
 
@@ -48,23 +47,22 @@ const AdminForms = () => {
 			multiple: false,
 		}).then(async (data) => {
 			if (data) {
-				setImageFileName(data.substring(data.lastIndexOf("\\")));
-				const imagePath = data; // Assuming open() returns an array of file paths
-				let webImage = new URL(convertFileSrc(imagePath));
-				setImage(webImage);
+				setImageFileName(data.substring(data.lastIndexOf("\\") + 1));
+
+				setImage(new URL(convertFileSrc(data)));
 			}
 		});
 	};
+
 	const updateBlogFile = () => {
 		open({
 			directory: false,
 			multiple: false,
 		}).then(async (data) => {
 			if (data) {
-				setBlogFileName(data.substring(data.lastIndexOf("\\")));
+				setBlogFileName(data.substring(data.lastIndexOf("\\") + 1));
 
-				let blogFile = new URL(convertFileSrc(data));
-				setBlog(blogFile);
+				setBlog(new URL(convertFileSrc(data)));
 			}
 		});
 	};
@@ -78,7 +76,6 @@ const AdminForms = () => {
 		const imagePathRoot = settings.blog_folder_path;
 		const imageU8 = new Uint8Array(await response.arrayBuffer());
 
-		// Write changes to file
 		const file = await openFs(imagePathRoot + "\\" + blogName, {
 			write: true,
 			create: true,
@@ -86,12 +83,12 @@ const AdminForms = () => {
 		await file.write(imageU8);
 		await file.close();
 	}
+
 	async function uploadBlogImage(webImage: URL, imageName: String) {
 		const response = await fetch(webImage);
 		const imagePathRoot = settings.blog_images_path;
 		const imageU8 = new Uint8Array(await response.arrayBuffer());
 
-		// Write changes to file
 		const file = await openFs(imagePathRoot + "\\" + imageName, {
 			write: true,
 			create: true,
@@ -106,14 +103,13 @@ const AdminForms = () => {
 		setError("");
 
 		try {
-			const formattedBlogPost = {
-				...blogPost,
-				blog_date: new Date(blogPost.blog_date).toISOString().split("T")[0],
-				image_path: imageFileName,
-				file_path: blogFile,
-			};
 			const createdBlogData = await invoke<BlogPost>("create_blog_post", {
-				blogPost: formattedBlogPost,
+				blogPost: {
+					...blogPost,
+					blog_date: new Date(blogPost.blog_date).toISOString().split("T")[0],
+					image_path: imageFileName,
+					file_name: blogFileName,
+				},
 			});
 
 			if (selectedTags.length > 0) {
@@ -122,15 +118,17 @@ const AdminForms = () => {
 					tagIds: selectedTags.map((tag) => tag.id),
 				});
 			}
+
 			if (blogImage) {
 				uploadBlogImage(blogImage, imageFileName);
 			}
+
 			if (blogFile) {
 				uploadBlogFile(blogFile, blogFileName);
 			}
 
 			setSelectedTags([]);
-			// Reset form
+
 			setBlogPost({
 				title: "",
 				blog_date: new Date().toISOString().split("T")[0],
@@ -138,6 +136,7 @@ const AdminForms = () => {
 				file_name: "",
 				image_path: "",
 			});
+
 		} catch (err) {
 			setError((err as Error).toString());
 		} finally {
@@ -154,7 +153,6 @@ const AdminForms = () => {
 			const createdProjectData = await invoke<Project>("create_project", {
 				project,
 			});
-			console.log(createdProjectData);
 			if (selectedTags.length > 0) {
 				await invoke("add_tags_to_project", {
 					projectId: createdProjectData.id,
