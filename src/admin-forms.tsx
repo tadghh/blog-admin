@@ -15,8 +15,8 @@ const AdminForms = () => {
 	});
 	const [imageFileName, setImageFileName] = useState<string>("");
 	const [blogFileName, setBlogFileName] = useState<string>("");
-	const [blogImage, setImage] = useState<URL>();
-	const [blogFile, setBlog] = useState<URL>();
+	const [blogImage, setImage] = useState<any>();
+	const [blogFile, setBlog] = useState<any>();
 	const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
 	const [blogPost, setBlogPost] = useState({
 		title: "",
@@ -136,7 +136,8 @@ const AdminForms = () => {
 				file_name: "",
 				image_path: "",
 			});
-
+			setBlog(null);
+			setImage(null);
 		} catch (err) {
 			setError((err as Error).toString());
 		} finally {
