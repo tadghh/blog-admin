@@ -10,12 +10,12 @@ use crate::AppState;
 pub struct Project {
     id: Option<i32>,
     title: String,
-    project_description: Option<String>,
-    image_path: Option<String>,
-    project_url: Option<String>,
-    date_created: Option<NaiveDate>,
-    project_status: Option<String>,
-    license: Option<String>,
+    description: Option<String>,
+    image_name: Option<String>,
+    url: Option<String>,
+    created: Option<NaiveDate>,
+    released: bool,
+    live: bool,
 }
 
 #[tauri::command]
@@ -28,14 +28,14 @@ pub async fn get_projects(state: State<'_, Mutex<AppState>>) -> Result<Vec<Proje
         SELECT
             id,
             title,
-            project_description,
-            image_path,
-            project_url,
-            date_created,
-            project_status,
-            license
+            description,
+            image_name,
+            url,
+            created,
+            released,
+            live
         FROM tadgh_blog.projects
-        ORDER BY date_created DESC
+        ORDER BY created DESC
         "#
     )
     .fetch_all(pool)
@@ -64,7 +64,6 @@ pub async fn delete_project(
     Ok(())
 }
 
-
 #[tauri::command]
 pub async fn create_project(
     state: State<'_, Mutex<AppState>>,
@@ -76,17 +75,17 @@ pub async fn create_project(
         Project,
         r#"
         INSERT INTO tadgh_blog.projects
-        (title, project_description, image_path, project_url, date_created, project_status, license)
+        (title, description, image_name, url, created, released, live)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, title, project_description, image_path, project_url, date_created, project_status, license
+        RETURNING id, title, description, image_name, url, created, released, live
         "#,
         project.title,
-        project.project_description,
-        project.image_path,
-        project.project_url,
-        project.date_created,
-        project.project_status,
-        project.license
+        project.description,
+        project.image_name,
+        project.url,
+        project.created,
+        project.released,
+        project.live
     )
     .fetch_one(pool)
     .await
@@ -104,21 +103,21 @@ pub async fn update_project(
         r#"
         UPDATE tadgh_blog.projects
         SET title = $1,
-            project_description = $2,
-            image_path = $3,
-            project_url = $4,
-            date_created = $5,
-            project_status = $6,
-            license = $7
+            description = $2,
+            image_name = $3,
+            url = $4,
+            created = $5,
+            released = $6,
+            live = $7
         WHERE id = $8
         "#,
         project.title,
-        project.project_description,
-        project.image_path,
-        project.project_url,
-        project.date_created,
-        project.project_status,
-        project.license,
+        project.description,
+        project.image_name,
+        project.url,
+        project.created,
+        project.released,
+        project.live,
         project.id
     )
     .execute(pool)

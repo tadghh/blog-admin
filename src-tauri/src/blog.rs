@@ -9,18 +9,18 @@ use crate::AppState;
 pub struct BlogPost {
     id: i32,
     title: String,
-    blog_date: Option<NaiveDate>,
+    created: Option<NaiveDate>,
     description: String,
-    image_path: Option<String>,
+    image_name: Option<String>,
     file_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateBlogPost {
     title: String,
-    blog_date: NaiveDate,
+    created: NaiveDate,
     description: String,
-    image_path: Option<String>,
+    image_name: Option<String>,
     file_name: String,
 }
 #[tauri::command]
@@ -33,12 +33,12 @@ pub async fn get_blog_posts(state: State<'_, Mutex<AppState>>) -> Result<Vec<Blo
         SELECT
             id,
             title,
-            blog_date,
+            created,
             description,
-            image_path,
+            image_name,
             file_name
         FROM tadgh_blog.blog_posts
-        ORDER BY blog_date DESC
+        ORDER BY created DESC
         "#
     )
     .fetch_all(pool)
@@ -56,14 +56,14 @@ pub async fn create_blog_post(
     sqlx::query_as!(
         BlogPost,
         r#"
-        INSERT INTO tadgh_blog.blog_posts (title, blog_date, description, image_path, file_name)
+        INSERT INTO tadgh_blog.blog_posts (title, created, description, image_name, file_name)
         VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, title, blog_date, description, image_path, file_name
+        RETURNING id, title, created, description, image_name, file_name
         "#,
         blog_post.title,
-        blog_post.blog_date,
+        blog_post.created,
         blog_post.description,
-        blog_post.image_path,
+        blog_post.image_name,
         blog_post.file_name
     )
     .fetch_one(pool)
@@ -82,16 +82,16 @@ pub async fn update_blog_post(
         r#"
         UPDATE tadgh_blog.blog_posts
         SET title = $1,
-            blog_date = $2,
+            created = $2,
             description = $3,
-            image_path = $4,
+            image_name = $4,
             file_name = $5
         WHERE id = $6
         "#,
         blog_post.title,
-        blog_post.blog_date,
+        blog_post.created,
         blog_post.description,
-        blog_post.image_path,
+        blog_post.image_name,
         blog_post.file_name,
         blog_post.id
     )

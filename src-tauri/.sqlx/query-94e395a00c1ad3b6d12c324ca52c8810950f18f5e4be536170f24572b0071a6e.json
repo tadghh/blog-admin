@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            title,\n            blog_date,\n            description,\n            image_path,\n            file_name\n        FROM tadgh_blog.blog_posts\n        ORDER BY blog_date DESC\n        ",
+  "query": "\n        SELECT\n            id,\n            title,\n            created,\n            description,\n            image_name,\n            file_name\n        FROM tadgh_blog.blog_posts\n        ORDER BY created DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -15,7 +15,7 @@
       },
       {
         "ordinal": 2,
-        "name": "blog_date",
+        "name": "created",
         "type_info": "Date"
       },
       {
@@ -25,7 +25,7 @@
       },
       {
         "ordinal": 4,
-        "name": "image_path",
+        "name": "image_name",
         "type_info": "Text"
       },
       {
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "0d897e4faf7e7b72cf78be7ba35e444d426fc4c780da46afc2a4a630a5e763b0"
+  "hash": "94e395a00c1ad3b6d12c324ca52c8810950f18f5e4be536170f24572b0071a6e"
 }

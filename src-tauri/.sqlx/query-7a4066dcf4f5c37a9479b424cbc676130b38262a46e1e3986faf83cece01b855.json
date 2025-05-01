@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            title,\n            project_description,\n            image_path,\n            project_url,\n            date_created,\n            project_status,\n            license\n        FROM tadgh_blog.projects\n        ORDER BY date_created DESC\n        ",
+  "query": "\n        SELECT\n            id,\n            title,\n            description,\n            image_name,\n            url,\n            created,\n            released,\n            live\n        FROM tadgh_blog.projects\n        ORDER BY created DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -15,33 +15,33 @@
       },
       {
         "ordinal": 2,
-        "name": "project_description",
+        "name": "description",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "image_path",
+        "name": "image_name",
         "type_info": "Text"
       },
       {
         "ordinal": 4,
-        "name": "project_url",
+        "name": "url",
         "type_info": "Text"
       },
       {
         "ordinal": 5,
-        "name": "date_created",
+        "name": "created",
         "type_info": "Date"
       },
       {
         "ordinal": 6,
-        "name": "project_status",
-        "type_info": "Text"
+        "name": "released",
+        "type_info": "Bool"
       },
       {
         "ordinal": 7,
-        "name": "license",
-        "type_info": "Text"
+        "name": "live",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -54,9 +54,9 @@
       true,
       true,
       true,
-      true,
-      true
+      false,
+      false
     ]
   },
-  "hash": "e8a13ed202c84f4449574df36ccf4dc62a5c7e996af33230b13f82421ecb7568"
+  "hash": "7a4066dcf4f5c37a9479b424cbc676130b38262a46e1e3986faf83cece01b855"
 }

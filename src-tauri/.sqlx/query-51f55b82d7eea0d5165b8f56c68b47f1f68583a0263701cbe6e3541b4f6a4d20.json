@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO tadgh_blog.projects\n        (title, project_description, image_path, project_url, date_created, project_status, license)\n        VALUES ($1, $2, $3, $4, $5, $6, $7)\n        RETURNING id, title, project_description, image_path, project_url, date_created, project_status, license\n        ",
+  "query": "\n        INSERT INTO tadgh_blog.projects\n        (title, description, image_name, url, created, released, live)\n        VALUES ($1, $2, $3, $4, $5, $6, $7)\n        RETURNING id, title, description, image_name, url, created, released, live\n        ",
   "describe": {
     "columns": [
       {
@@ -15,33 +15,33 @@
       },
       {
         "ordinal": 2,
-        "name": "project_description",
+        "name": "description",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "image_path",
+        "name": "image_name",
         "type_info": "Text"
       },
       {
         "ordinal": 4,
-        "name": "project_url",
+        "name": "url",
         "type_info": "Text"
       },
       {
         "ordinal": 5,
-        "name": "date_created",
+        "name": "created",
         "type_info": "Date"
       },
       {
         "ordinal": 6,
-        "name": "project_status",
-        "type_info": "Text"
+        "name": "released",
+        "type_info": "Bool"
       },
       {
         "ordinal": 7,
-        "name": "license",
-        "type_info": "Text"
+        "name": "live",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -51,8 +51,8 @@
         "Text",
         "Text",
         "Date",
-        "Text",
-        "Text"
+        "Bool",
+        "Bool"
       ]
     },
     "nullable": [
@@ -62,9 +62,9 @@
       true,
       true,
       true,
-      true,
-      true
+      false,
+      false
     ]
   },
-  "hash": "1c226165726d826cf438535979f62a35b8806791af38ab47589905f222f3de12"
+  "hash": "51f55b82d7eea0d5165b8f56c68b47f1f68583a0263701cbe6e3541b4f6a4d20"
 }

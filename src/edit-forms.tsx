@@ -19,12 +19,12 @@ interface BlogPost {
 interface Project {
 	id: number;
 	title: string;
-	project_description: string | null;
+	description: string | null;
 	image_path: string | null;
-	project_url: string | null;
-	date_created: string;
-	project_status: string | null;
-	license: string | null;
+	url: string | null;
+	created: string;
+	released: boolean | false;
+	live: boolean | false;
 	isEditing?: boolean;
 }
 
@@ -73,12 +73,6 @@ const EditForms = () => {
 			}
 		});
 	};
-
-	const loadSettings = async () => {
-		const saved = await invoke<Settings>("load_settings");
-		setSettings(saved);
-	};
-
 	async function uploadBlogImage(webImage: URL, imageName: String) {
 		const response = await fetch(webImage);
 		const imagePathRoot = settings.blog_images_path;
@@ -91,6 +85,29 @@ const EditForms = () => {
 		await file.write(imageU8);
 		await file.close();
 	}
+	const saveBlogChanges = async (post: BlogPost) => {
+		setLoading(true);
+		try {
+			await invoke("update_blog_post", { blogPost: post });
+			toggleBlogEdit(post.id);
+			await fetchData(); // Refresh data after update
+		} catch (err) {
+			setError(err as string);
+		} finally {
+			setLoading(false);
+		}
+	};
+	const toggleBlogEdit = (id: number) => {
+		setBlogPosts(
+			blogPosts.map((post) =>
+				post.id === id ? { ...post, isEditing: !post.isEditing } : post
+			)
+		);
+	};
+	const loadSettings = async () => {
+		const saved = await invoke<Settings>("load_settings");
+		setSettings(saved);
+	};
 
 	const fetchData = async () => {
 		setLoading(true);
@@ -135,20 +152,6 @@ const EditForms = () => {
 		}
 	};
 
-	const saveBlogChanges = async (post: BlogPost) => {
-		setLoading(true);
-		try {
-			await invoke("update_blog_post", { blogPost: post });
-			toggleBlogEdit(post.id);
-			await fetchData(); // Refresh data after update
-		} catch (err) {
-			setError(err as string);
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	// Project editing functions
 	const toggleProjectEdit = (id: number) => {
 		setProjects(
 			projects.map((project) =>
@@ -158,16 +161,6 @@ const EditForms = () => {
 			)
 		);
 	};
-
-	// Blog post editing functions
-	const toggleBlogEdit = (id: number) => {
-		setBlogPosts(
-			blogPosts.map((post) =>
-				post.id === id ? { ...post, isEditing: !post.isEditing } : post
-			)
-		);
-	};
-
 	const updateProject = (id: number, field: keyof Project, value: any) => {
 		setProjects(
 			projects.map((project) =>
@@ -411,26 +404,28 @@ const EditForms = () => {
 										)}
 									</div>
 
-									{/* Status */}
 									<div className="flex-1 px-6">
-										{project.isEditing ? (
-											<input
-												type="text"
-												className="px-2 py-1 w-full rounded border"
-												value={project.project_status || ""}
-												onChange={(e) =>
-													updateProject(
-														project.id,
-														"project_status",
-														e.target.value
-													)
-												}
-											/>
-										) : (
-											<span className="text-sm text-gray-500">
-												{project.project_status}
-											</span>
-										)}
+										<span>Released</span>
+										<input
+											type="checkbox"
+											className="px-2 py-1 w-full rounded border"
+											checked={project.released}
+											onChange={(e) =>
+												updateProject(project.id, "released", e.target.checked)
+											}
+										/>
+									</div>
+
+									<div className="flex-1 px-6">
+										<span>Live</span>
+										<input
+											type="checkbox"
+											checked={project.live}
+											className="px-2 py-1 w-full rounded border"
+											onChange={(e) =>
+												updateProject(project.id, "live", e.target.checked)
+											}
+										/>
 									</div>
 
 									{/* Description */}
@@ -438,18 +433,18 @@ const EditForms = () => {
 										{project.isEditing ? (
 											<textarea
 												className="px-2 py-1 w-full rounded border"
-												value={project.project_description || ""}
+												value={project.description || ""}
 												onChange={(e) =>
 													updateProject(
 														project.id,
-														"project_description",
+														"description",
 														e.target.value
 													)
 												}
 											/>
 										) : (
 											<span className="text-sm text-gray-500">
-												{project.project_description}
+												{project.description}
 											</span>
 										)}
 									</div>
@@ -460,22 +455,18 @@ const EditForms = () => {
 											<input
 												type="url"
 												className="px-2 py-1 w-full rounded border"
-												value={project.project_url || ""}
+												value={project.url || ""}
 												onChange={(e) =>
-													updateProject(
-														project.id,
-														"project_url",
-														e.target.value
-													)
+													updateProject(project.id, "url", e.target.value)
 												}
 											/>
 										) : (
 											<a
-												href={project.project_url || "#"}
+												href={project.url || "#"}
 												className="text-blue-600 hover:text-blue-900"
 												target="_blank"
 												rel="noopener noreferrer">
-												{project.project_url?.substring(0, 29)}
+												{project.url?.substring(0, 29)}
 											</a>
 										)}
 									</div>

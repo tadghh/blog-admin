@@ -32,8 +32,8 @@ const AdminForms = () => {
 		image_path: "",
 		project_url: "",
 		date_created: new Date().toISOString().split("T")[0],
-		project_status: "",
-		license: "",
+		live: false,
+		released: false,
 	});
 
 	const loadSettings = async () => {
@@ -169,8 +169,8 @@ const AdminForms = () => {
 				image_path: "",
 				project_url: "",
 				date_created: new Date().toISOString().split("T")[0],
-				project_status: "",
-				license: "",
+				live: false,
+				released: false,
 			});
 		} catch (err) {
 			setError((err as Error).toString());
@@ -386,11 +386,10 @@ const AdminForms = () => {
 								Project Status
 							</label>
 							<input
-								type="text"
+								type="checkbox"
 								className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-								value={project.project_status}
 								onChange={(e) =>
-									setProject({ ...project, project_status: e.target.value })
+									setProject({ ...project, released: e.target.checked })
 								}
 								placeholder="Enter project status"
 							/>
@@ -398,14 +397,13 @@ const AdminForms = () => {
 
 						<div>
 							<label className="block mb-1 text-sm font-medium text-gray-700">
-								License
+								Live
 							</label>
 							<input
-								type="text"
+								type="checkbox"
 								className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-								value={project.license}
 								onChange={(e) =>
-									setProject({ ...project, license: e.target.value })
+									setProject({ ...project, live: e.target.checked })
 								}
 								placeholder="Enter license information"
 							/>
