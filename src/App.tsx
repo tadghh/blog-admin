@@ -13,7 +13,7 @@ import DatabaseConnection from "./bootup";
 import TagManagement from "./TagManagement";
 import CategoryManagement from "./CategoryManagement";
 import Sidebar from "./components/Sidebar";
-import "./app.css";
+import "./App.css";
 
 function App() {
 	const [isConnected, setIsConnected] = useState(false);
