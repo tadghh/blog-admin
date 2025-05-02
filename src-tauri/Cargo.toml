@@ -18,7 +18,7 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1.44.2", features = ["full"] }
-sqlx =  { version ="0.8.3", features = ["runtime-tokio", "postgres", "chrono"] }
+sqlx =  { version ="0.8.5", features = ["runtime-tokio", "postgres", "chrono"] }
 chrono = { version = "0.4", features = ["serde"] }
 tauri-plugin-dialog = "2.2.1"
 tauri-plugin-fs = "2"
