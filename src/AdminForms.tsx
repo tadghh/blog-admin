@@ -1,24 +1,23 @@
 import { useState, useEffect } from "react";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
 import { open as openFs } from "@tauri-apps/plugin-fs";
 import TagSelector from "./TagSelector";
 import { BlogPost, Project, Settings, Tag } from "./interfaces";
 import {
 	ActionButton,
 	ContentCard,
-	ErrorMessage,
 	FormField,
 	Tabs,
 	ToggleSwitch,
 	SectionDivider,
-	ImageIcon,
 } from "./components";
+import { FileUpload, Notification } from "./components/index";
 
 const AdminForms = () => {
 	const [activeTab, setActiveTab] = useState("blog");
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
+	const [successMessage, setSuccessMessage] = useState("");
 	const [settings, setSettings] = useState<Settings>({
 		blog_images_path: "",
 		blog_folder_path: "",
@@ -27,25 +26,25 @@ const AdminForms = () => {
 	// Blog post form state
 	const [imageFileName, setImageFileName] = useState<string>("");
 	const [blogFileName, setBlogFileName] = useState<string>("");
-	const [blogImage, setImage] = useState<any>();
-	const [blogFile, setBlog] = useState<any>();
+	const [blogImage, setImage] = useState<URL | null>(null);
+	const [blogFile, setBlog] = useState<URL | null>(null);
 	const [blogSelectedTags, setBlogSelectedTags] = useState<Tag[]>([]);
 	const [blogPost, setBlogPost] = useState({
 		title: "",
 		blog_date: new Date().toISOString().split("T")[0],
 		description: "",
 		file_name: "",
-		image_name: "", // Changed from image_path to match the API
+		image_name: "",
 	});
 
 	// Project form state
 	const [projectImageFileName, setProjectImageFileName] = useState<string>("");
-	const [projectImage, setProjectImage] = useState<any>();
+	const [projectImage, setProjectImage] = useState<URL | null>(null);
 	const [projectSelectedTags, setProjectSelectedTags] = useState<Tag[]>([]);
 	const [project, setProject] = useState({
 		title: "",
 		description: "",
-		image_name: "", // Changed from image_path to match the API
+		image_name: "",
 		url: "",
 		created: new Date().toISOString().split("T")[0],
 		live: false,
@@ -62,91 +61,6 @@ const AdminForms = () => {
 			setSettings(saved);
 		} catch (err) {
 			setError(`Failed to load settings: ${err}`);
-		}
-	};
-
-	// Image uploaders
-	const updateBlogImage = async () => {
-		try {
-			const data = await open({
-				directory: false,
-				multiple: false,
-				filters: [
-					{
-						name: "Images",
-						extensions: ["png", "jpg", "jpeg", "gif", "webp"],
-					},
-				],
-			});
-
-			if (data) {
-				const fileName = data.substring(data.lastIndexOf("\\") + 1);
-				setImageFileName(fileName);
-				setImage(new URL(convertFileSrc(data)));
-				// Update the blogPost state with the new image name
-				setBlogPost((prev) => ({
-					...prev,
-					image_name: fileName,
-				}));
-			}
-		} catch (err) {
-			setError(`Error selecting image: ${err}`);
-		}
-	};
-
-	const updateProjectImage = async () => {
-		try {
-			const data = await open({
-				directory: false,
-				multiple: false,
-				filters: [
-					{
-						name: "Images",
-						extensions: ["png", "jpg", "jpeg", "gif", "webp"],
-					},
-				],
-			});
-
-			if (data) {
-				const fileName = data.substring(data.lastIndexOf("\\") + 1);
-				setProjectImageFileName(fileName);
-				setProjectImage(new URL(convertFileSrc(data)));
-				// Update the project state with the new image name
-				setProject((prev) => ({
-					...prev,
-					image_name: fileName,
-				}));
-			}
-		} catch (err) {
-			setError(`Error selecting image: ${err}`);
-		}
-	};
-
-	const updateBlogFile = async () => {
-		try {
-			const data = await open({
-				directory: false,
-				multiple: false,
-				filters: [
-					{
-						name: "Markdown",
-						extensions: ["md", "markdown", "txt", "html"],
-					},
-				],
-			});
-
-			if (data) {
-				const fileName = data.substring(data.lastIndexOf("\\") + 1);
-				setBlogFileName(fileName);
-				setBlog(new URL(convertFileSrc(data)));
-				// Update the blogPost state with the new file name
-				setBlogPost((prev) => ({
-					...prev,
-					file_name: fileName,
-				}));
-			}
-		} catch (err) {
-			setError(`Error selecting file: ${err}`);
 		}
 	};
 
@@ -175,20 +89,78 @@ const AdminForms = () => {
 		}
 	}
 
+	// Reset blog form
+	const resetBlogForm = () => {
+		setBlogSelectedTags([]);
+		setBlogPost({
+			title: "",
+			blog_date: new Date().toISOString().split("T")[0],
+			description: "",
+			file_name: "",
+			image_name: "",
+		});
+		setBlog(null);
+		setImage(null);
+		setImageFileName("");
+		setBlogFileName("");
+	};
+
+	// Reset project form
+	const resetProjectForm = () => {
+		setProjectSelectedTags([]);
+		setProject({
+			title: "",
+			description: "",
+			image_name: "",
+			url: "",
+			created: new Date().toISOString().split("T")[0],
+			live: false,
+			released: false,
+		});
+		setProjectImage(null);
+		setProjectImageFileName("");
+	};
+
+	// File upload handlers
+	const handleBlogImageSelect = (fileName: string, fileUrl: URL) => {
+		setImageFileName(fileName);
+		setImage(fileUrl);
+		setBlogPost((prev) => ({
+			...prev,
+			image_name: fileName,
+		}));
+	};
+
+	const handleBlogFileSelect = (fileName: string, fileUrl: URL) => {
+		setBlogFileName(fileName);
+		setBlog(fileUrl);
+		setBlogPost((prev) => ({
+			...prev,
+			file_name: fileName,
+		}));
+	};
+
+	const handleProjectImageSelect = (fileName: string, fileUrl: URL) => {
+		setProjectImageFileName(fileName);
+		setProjectImage(fileUrl);
+		setProject((prev) => ({
+			...prev,
+			image_name: fileName,
+		}));
+	};
+
 	// Form submission handlers
 	const handleBlogSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		setLoading(true);
 		setError("");
+		setSuccessMessage("");
 
 		try {
 			// Validate required fields
-			if (!blogPost.title.trim()) {
-				throw new Error("Title is required");
-			}
-			if (!blogPost.description.trim()) {
+			if (!blogPost.title.trim()) throw new Error("Title is required");
+			if (!blogPost.description.trim())
 				throw new Error("Description is required");
-			}
 
 			const formattedBlogPost = {
 				...blogPost,
@@ -196,8 +168,6 @@ const AdminForms = () => {
 				image_name: imageFileName || blogPost.image_name,
 				file_name: blogFileName || blogPost.file_name,
 			};
-
-			console.log("Submitting blog post:", formattedBlogPost);
 
 			const createdBlogData = await invoke<BlogPost>("create_blog_post", {
 				blogPost: formattedBlogPost,
@@ -218,22 +188,9 @@ const AdminForms = () => {
 				await uploadFile(blogFile, blogFileName, settings.blog_folder_path);
 			}
 
-			// Reset form
-			setBlogSelectedTags([]);
-			setBlogPost({
-				title: "",
-				blog_date: new Date().toISOString().split("T")[0],
-				description: "",
-				file_name: "",
-				image_name: "",
-			});
-			setBlog(null);
-			setImage(null);
-			setImageFileName("");
-			setBlogFileName("");
-
-			// Show success message or navigate
-			alert("Blog post created successfully!");
+			// Reset form and show success message
+			resetBlogForm();
+			setSuccessMessage("Blog post created successfully!");
 		} catch (err) {
 			setError(`Failed to create blog post: ${err}`);
 		} finally {
@@ -245,20 +202,17 @@ const AdminForms = () => {
 		e.preventDefault();
 		setLoading(true);
 		setError("");
+		setSuccessMessage("");
 
 		try {
 			// Validate required fields
-			if (!project.title.trim()) {
-				throw new Error("Title is required");
-			}
+			if (!project.title.trim()) throw new Error("Title is required");
 
 			const formattedProject = {
 				...project,
 				created: new Date(project.created).toISOString().split("T")[0],
 				image_name: projectImageFileName || project.image_name,
 			};
-
-			console.log("Submitting project:", formattedProject);
 
 			const createdProjectData = await invoke<Project>("create_project", {
 				project: formattedProject,
@@ -275,26 +229,13 @@ const AdminForms = () => {
 				await uploadFile(
 					projectImage,
 					projectImageFileName,
-					settings.blog_images_path // Make sure this is correct for project images
+					settings.blog_images_path
 				);
 			}
 
-			// Reset form
-			setProjectSelectedTags([]);
-			setProject({
-				title: "",
-				description: "",
-				image_name: "",
-				url: "",
-				created: new Date().toISOString().split("T")[0],
-				live: false,
-				released: false,
-			});
-			setProjectImage(null);
-			setProjectImageFileName("");
-
-			// Show success message or navigate
-			alert("Project created successfully!");
+			// Reset form and show success message
+			resetProjectForm();
+			setSuccessMessage("Project created successfully!");
 		} catch (err) {
 			setError(`Failed to create project: ${err}`);
 		} finally {
@@ -308,8 +249,17 @@ const AdminForms = () => {
 				<h1 className="text-2xl font-bold text-gray-800">Create Content</h1>
 			</div>
 
-			{/* Error Display */}
-			<ErrorMessage message={error} onDismiss={() => setError("")} />
+			{/* Notifications */}
+			<Notification
+				message={error}
+				type="error"
+				onDismiss={() => setError("")}
+			/>
+			<Notification
+				message={successMessage}
+				type="success"
+				onDismiss={() => setSuccessMessage("")}
+			/>
 
 			{/* Tabs */}
 			<ContentCard>
@@ -327,37 +277,27 @@ const AdminForms = () => {
 			{activeTab === "blog" && (
 				<ContentCard>
 					<div className="p-6">
-						<h2 className="mb-6 text-xl font-semibold">New Blog Post</h2>
+						<div className="flex justify-between items-center mb-6">
+							<h2 className="text-xl font-semibold">New Blog Post</h2>
+							<button
+								type="button"
+								onClick={resetBlogForm}
+								className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500">
+								Clear Form
+							</button>
+						</div>
 						<form onSubmit={handleBlogSubmit} className="space-y-6">
 							{/* Image Upload */}
-							<div className="space-y-2">
-								<label className="block text-sm font-medium text-gray-700">
-									Featured Image
-								</label>
-								<div
-									onClick={updateBlogImage}
-									className="cursor-pointer border-2 border-dashed border-gray-300 rounded-md p-4 hover:border-blue-500 transition-colors">
-									{blogImage ? (
-										<div className="flex flex-col items-center">
-											<img
-												alt="Blog thumbnail"
-												src={blogImage.toString()}
-												className="max-h-48 object-contain mb-2"
-											/>
-											<span className="text-sm text-gray-500">
-												{imageFileName}
-											</span>
-										</div>
-									) : (
-										<div className="flex flex-col items-center py-6">
-											<ImageIcon />
-											<span className="mt-2 text-sm text-gray-500">
-												Click to upload image
-											</span>
-										</div>
-									)}
-								</div>
-							</div>
+							<FileUpload
+								label="Featured Image"
+								fileName={imageFileName}
+								fileUrl={blogImage}
+								onFileSelect={handleBlogImageSelect}
+								onError={setError}
+								accept="images"
+								placeholder="Click to upload blog image"
+								preview={true}
+							/>
 
 							{/* Title */}
 							<FormField
@@ -367,7 +307,7 @@ const AdminForms = () => {
 									<input
 										type="text"
 										required
-										className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+										className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 										value={blogPost.title}
 										onChange={(e) =>
 											setBlogPost({ ...blogPost, title: e.target.value })
@@ -385,7 +325,7 @@ const AdminForms = () => {
 								editComponent={
 									<input
 										type="date"
-										className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+										className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 										value={blogPost.blog_date}
 										onChange={(e) =>
 											setBlogPost({ ...blogPost, blog_date: e.target.value })
@@ -414,41 +354,16 @@ const AdminForms = () => {
 							/>
 
 							{/* Blog File Upload */}
-							<div className="space-y-2">
-								<label className="block text-sm font-medium text-gray-700">
-									Content File
-								</label>
-								<div
-									onClick={updateBlogFile}
-									className="cursor-pointer border-2 border-dashed border-gray-300 rounded-md p-4 hover:border-blue-500 transition-colors">
-									{blogFile ? (
-										<div className="flex flex-col items-center">
-											<div className="bg-gray-100 p-4 rounded-md">
-												<span className="font-mono">{blogFileName}</span>
-											</div>
-										</div>
-									) : (
-										<div className="flex flex-col items-center py-6">
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												className="h-10 w-10 text-gray-400"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke="currentColor">
-												<path
-													strokeLinecap="round"
-													strokeLinejoin="round"
-													strokeWidth={2}
-													d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-												/>
-											</svg>
-											<span className="mt-2 text-sm text-gray-500">
-												Click to upload content file
-											</span>
-										</div>
-									)}
-								</div>
-							</div>
+							<FileUpload
+								label="Content File"
+								fileName={blogFileName}
+								fileUrl={blogFile}
+								onFileSelect={handleBlogFileSelect}
+								onError={setError}
+								accept="documents"
+								placeholder="Click to upload content file"
+								preview={false}
+							/>
 
 							{/* Tags */}
 							<SectionDivider title="Tags">
@@ -459,7 +374,7 @@ const AdminForms = () => {
 							</SectionDivider>
 
 							{/* Submit Button */}
-							<div className="mt-4">
+							<div className="flex gap-3 mt-6">
 								<ActionButton
 									onClick={() => {}}
 									disabled={loading}
@@ -467,6 +382,13 @@ const AdminForms = () => {
 									isLoading={loading}>
 									{loading ? "Creating..." : "Create Blog Post"}
 								</ActionButton>
+								<button
+									type="button"
+									onClick={resetBlogForm}
+									disabled={loading}
+									className="px-4 py-2 text-sm font-medium text-gray-700 bg-white rounded-md border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50">
+									Reset
+								</button>
 							</div>
 						</form>
 					</div>
@@ -477,37 +399,27 @@ const AdminForms = () => {
 			{activeTab === "project" && (
 				<ContentCard>
 					<div className="p-6">
-						<h2 className="mb-6 text-xl font-semibold">New Project</h2>
+						<div className="flex justify-between items-center mb-6">
+							<h2 className="text-xl font-semibold">New Project</h2>
+							<button
+								type="button"
+								onClick={resetProjectForm}
+								className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500">
+								Clear Form
+							</button>
+						</div>
 						<form onSubmit={handleProjectSubmit} className="space-y-6">
 							{/* Project Image Upload */}
-							<div className="space-y-2">
-								<label className="block text-sm font-medium text-gray-700">
-									Project Image
-								</label>
-								<div
-									onClick={updateProjectImage}
-									className="cursor-pointer border-2 border-dashed border-gray-300 rounded-md p-4 hover:border-blue-500 transition-colors">
-									{projectImage ? (
-										<div className="flex flex-col items-center">
-											<img
-												alt="Project thumbnail"
-												src={projectImage.toString()}
-												className="max-h-48 object-contain mb-2"
-											/>
-											<span className="text-sm text-gray-500">
-												{projectImageFileName}
-											</span>
-										</div>
-									) : (
-										<div className="flex flex-col items-center py-6">
-											<ImageIcon />
-											<span className="mt-2 text-sm text-gray-500">
-												Click to upload project image
-											</span>
-										</div>
-									)}
-								</div>
-							</div>
+							<FileUpload
+								label="Project Image"
+								fileName={projectImageFileName}
+								fileUrl={projectImage}
+								onFileSelect={handleProjectImageSelect}
+								onError={setError}
+								accept="images"
+								placeholder="Click to upload project image"
+								preview={true}
+							/>
 
 							{/* Title */}
 							<FormField
@@ -517,7 +429,7 @@ const AdminForms = () => {
 									<input
 										type="text"
 										required
-										className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+										className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 										value={project.title}
 										onChange={(e) =>
 											setProject({ ...project, title: e.target.value })
@@ -554,8 +466,8 @@ const AdminForms = () => {
 								isEditing={true}
 								editComponent={
 									<input
-										type="input"
-										className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+										type="url"
+										className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 										value={project.url}
 										onChange={(e) =>
 											setProject({ ...project, url: e.target.value })
@@ -573,7 +485,7 @@ const AdminForms = () => {
 								editComponent={
 									<input
 										type="date"
-										className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+										className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 										value={project.created}
 										onChange={(e) =>
 											setProject({ ...project, created: e.target.value })
@@ -611,7 +523,7 @@ const AdminForms = () => {
 							</SectionDivider>
 
 							{/* Submit Button */}
-							<div className="mt-4">
+							<div className="flex gap-3 mt-6">
 								<ActionButton
 									onClick={() => {}}
 									disabled={loading}
@@ -619,6 +531,13 @@ const AdminForms = () => {
 									isLoading={loading}>
 									{loading ? "Creating..." : "Create Project"}
 								</ActionButton>
+								<button
+									type="button"
+									onClick={resetProjectForm}
+									disabled={loading}
+									className="px-4 py-2 text-sm font-medium text-gray-700 bg-white rounded-md border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50">
+									Reset
+								</button>
 							</div>
 						</form>
 					</div>

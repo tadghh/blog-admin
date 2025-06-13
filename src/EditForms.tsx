@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Tag, Settings } from "./interfaces";
 import {
-	ErrorMessage,
 	ContentCard,
 	SearchInput,
 	Tabs,
 	LoadingSpinner,
 	EmptyState,
 } from "./components";
+import { ConfirmationDialog, Notification } from "./components/index";
 import {
 	BlogPost,
 	Project,
@@ -22,6 +22,7 @@ const EditForms = () => {
 	const [activeTab, setActiveTab] = useState("blog");
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
+	const [successMessage, setSuccessMessage] = useState("");
 	const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
 	const [projects, setProjects] = useState<Project[]>([]);
 	const [settings, setSettings] = useState<Settings>({
@@ -34,7 +35,21 @@ const EditForms = () => {
 	);
 	const [searchQuery, setSearchQuery] = useState("");
 
-	// Common Data Loading Operations
+	// Confirmation dialog state
+	const [confirmDialog, setConfirmDialog] = useState<{
+		isOpen: boolean;
+		title: string;
+		message: string;
+		itemId: number | null;
+		itemType: "blog" | "project" | null;
+	}>({
+		isOpen: false,
+		title: "",
+		message: "",
+		itemId: null,
+		itemType: null,
+	});
+
 	useEffect(() => {
 		loadSettings();
 		fetchData();
@@ -111,26 +126,34 @@ const EditForms = () => {
 
 	const saveBlogChanges = async (post: BlogPost) => {
 		setLoading(true);
+		setError("");
+		setSuccessMessage("");
 		try {
 			await invoke("update_blog_post", { blogPost: post });
 			toggleBlogEdit(post.id);
+			setSuccessMessage("Blog post updated successfully!");
 			await fetchData(); // Refresh data after update
 		} catch (err) {
-			setError(err as string);
+			setError(`Failed to update blog post: ${err}`);
 		} finally {
 			setLoading(false);
 		}
 	};
 
 	const updateBlogTags = async (blogId: number, tags: Tag[]) => {
-		await invoke("update_blog_tags", {
-			blogId,
-			tagIds: tags.map((t) => t.id),
-		});
-		setTagsByBlogId({
-			...tagsByBlogId,
-			[blogId]: tags,
-		});
+		try {
+			await invoke("update_blog_tags", {
+				blogId,
+				tagIds: tags.map((t) => t.id),
+			});
+			setTagsByBlogId({
+				...tagsByBlogId,
+				[blogId]: tags,
+			});
+			setSuccessMessage("Blog post tags updated successfully!");
+		} catch (err) {
+			setError(`Failed to update blog tags: ${err}`);
+		}
 	};
 
 	// Project Operations
@@ -154,53 +177,96 @@ const EditForms = () => {
 
 	const saveProjectChanges = async (project: Project) => {
 		setLoading(true);
+		setError("");
+		setSuccessMessage("");
 		try {
 			await invoke("update_project", { project });
 			toggleProjectEdit(project.id);
+			setSuccessMessage("Project updated successfully!");
 			await fetchData(); // Refresh data after update
 		} catch (err) {
-			setError(err as string);
+			setError(`Failed to update project: ${err}`);
 		} finally {
 			setLoading(false);
 		}
 	};
 
 	const updateProjectTags = async (projectId: number, tags: Tag[]) => {
-		await invoke("update_project_tags", {
-			projectId,
-			tagIds: tags.map((t) => t.id),
-		});
-		setTagsByProjectId({
-			...tagsByProjectId,
-			[projectId]: tags,
+		try {
+			await invoke("update_project_tags", {
+				projectId,
+				tagIds: tags.map((t) => t.id),
+			});
+			setTagsByProjectId({
+				...tagsByProjectId,
+				[projectId]: tags,
+			});
+			setSuccessMessage("Project tags updated successfully!");
+		} catch (err) {
+			setError(`Failed to update project tags: ${err}`);
+		}
+	};
+
+	// Show confirmation dialog for deletion
+	const showDeleteConfirmation = async (
+		id: number,
+		type: "blog" | "project"
+	) => {
+		const itemName =
+			type === "blog"
+				? blogPosts.find((p) => p.id === id)?.title || "this blog post"
+				: projects.find((p) => p.id === id)?.title || "this project";
+
+		setConfirmDialog({
+			isOpen: true,
+			title: `Delete ${type === "blog" ? "Blog Post" : "Project"}`,
+			message: `Are you sure you want to delete "${itemName}"? This action cannot be undone.`,
+			itemId: id,
+			itemType: type,
 		});
 	};
 
-	// Common Operations
-	const deleteItem = async (id: number, type: "blog" | "project") => {
-		if (!confirm(`Are you sure you want to delete this ${type}?`)) return;
+	// Handle confirmed deletion
+	const handleConfirmedDelete = async () => {
+		if (!confirmDialog.itemId || !confirmDialog.itemType) return;
 
 		setLoading(true);
+		setError("");
+		setSuccessMessage("");
+
 		try {
-			if (type === "blog") {
-				await invoke("delete_blog_post", { blogPostId: id });
-				setBlogPosts(blogPosts.filter((post) => post.id !== id));
+			if (confirmDialog.itemType === "blog") {
+				await invoke("delete_blog_post", { blogPostId: confirmDialog.itemId });
+				setBlogPosts(
+					blogPosts.filter((post) => post.id !== confirmDialog.itemId)
+				);
 
 				// Clean up tags associated with this blog
-				const { [id]: _, ...remainingTags } = tagsByBlogId;
+				const { [confirmDialog.itemId]: _, ...remainingTags } = tagsByBlogId;
 				setTagsByBlogId(remainingTags);
+				setSuccessMessage("Blog post deleted successfully!");
 			} else {
-				await invoke("delete_project", { projectId: id });
-				setProjects(projects.filter((project) => project.id !== id));
+				await invoke("delete_project", { projectId: confirmDialog.itemId });
+				setProjects(
+					projects.filter((project) => project.id !== confirmDialog.itemId)
+				);
 
 				// Clean up tags associated with this project
-				const { [id]: _, ...remainingTags } = tagsByProjectId;
+				const { [confirmDialog.itemId]: _, ...remainingTags } = tagsByProjectId;
 				setTagsByProjectId(remainingTags);
+				setSuccessMessage("Project deleted successfully!");
 			}
 		} catch (err) {
-			setError(`Failed to delete ${type}: ${err}`);
+			setError(`Failed to delete ${confirmDialog.itemType}: ${err}`);
 		} finally {
 			setLoading(false);
+			setConfirmDialog({
+				isOpen: false,
+				title: "",
+				message: "",
+				itemId: null,
+				itemType: null,
+			});
 		}
 	};
 
@@ -214,7 +280,6 @@ const EditForms = () => {
 	};
 
 	const handleProjectImageUpdate = (project: Project) => {
-		console.log("yo");
 		projectImageUpdater(project, setLoading, setError, updateProject);
 	};
 
@@ -248,8 +313,17 @@ const EditForms = () => {
 				<h1 className="text-2xl font-bold text-gray-800">Edit Content</h1>
 			</div>
 
-			{/* Error Display */}
-			<ErrorMessage message={error} onDismiss={() => setError("")} />
+			{/* Notifications */}
+			<Notification
+				message={error}
+				type="error"
+				onDismiss={() => setError("")}
+			/>
+			<Notification
+				message={successMessage}
+				type="success"
+				onDismiss={() => setSuccessMessage("")}
+			/>
 
 			{/* Search and Tabs */}
 			<ContentCard>
@@ -288,7 +362,7 @@ const EditForms = () => {
 									loading={loading}
 									onEdit={toggleBlogEdit}
 									onSave={saveBlogChanges}
-									onDelete={deleteItem}
+									onDelete={showDeleteConfirmation}
 									onUpdate={updateBlogPost}
 									onUpdateImage={handleBlogImageUpdate}
 									onUpdateTags={updateBlogTags}
@@ -315,7 +389,7 @@ const EditForms = () => {
 									loading={loading}
 									onEdit={toggleProjectEdit}
 									onSave={saveProjectChanges}
-									onDelete={deleteItem}
+									onDelete={showDeleteConfirmation}
 									onUpdate={updateProject}
 									onUpdateImage={handleProjectImageUpdate}
 									onUpdateTags={updateProjectTags}
@@ -326,6 +400,19 @@ const EditForms = () => {
 					)}
 				</div>
 			)}
+
+			{/* Confirmation Dialog */}
+			<ConfirmationDialog
+				isOpen={confirmDialog.isOpen}
+				onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+				onConfirm={handleConfirmedDelete}
+				title={confirmDialog.title}
+				message={confirmDialog.message}
+				confirmText="Delete"
+				cancelText="Cancel"
+				variant="danger"
+				isLoading={loading}
+			/>
 		</div>
 	);
 };

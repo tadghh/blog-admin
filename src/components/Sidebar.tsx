@@ -1,144 +1,178 @@
-import { NavLink } from "react-router-dom";
-import { useState } from "react";
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
 
-// Icons
-const AdminIcon = () => (
-	<svg
-		xmlns="http://www.w3.org/2000/svg"
-		className="w-5 h-5"
-		viewBox="0 0 20 20"
-		fill="currentColor">
-		<path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-	</svg>
-);
+interface SidebarItem {
+	id: string;
+	label: string;
+	path: string;
+	icon: React.ReactNode;
+	badge?: string;
+}
 
-const EditIcon = () => (
-	<svg
-		xmlns="http://www.w3.org/2000/svg"
-		className="w-5 h-5"
-		viewBox="0 0 20 20"
-		fill="currentColor">
-		<path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-	</svg>
-);
+interface SidebarSection {
+	title?: string;
+	items: SidebarItem[];
+}
 
-const SettingsIcon = () => (
-	<svg
-		xmlns="http://www.w3.org/2000/svg"
-		className="w-5 h-5"
-		viewBox="0 0 20 20"
-		fill="currentColor">
-		<path
-			fillRule="evenodd"
-			d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-			clipRule="evenodd"
-		/>
-	</svg>
-);
+interface SidebarProps {
+	sections?: SidebarSection[];
+	className?: string;
+}
+import {
+	AppIcon,
+	DocumentTextIcon,
+	EditIcon,
+	EyeIcon,
+	ChartBarIcon,
+	SettingsIcon,
+	TagIcon,
+	CategoryIcon,
+} from "../Icons";
+const defaultSections: SidebarSection[] = [
+	{
+		title: "Content Management",
+		items: [
+			{
+				id: "create",
+				label: "Create Content",
+				path: "/admin",
+				icon: <DocumentTextIcon />,
+			},
+			{
+				id: "edit",
+				label: "Edit Content",
+				path: "/edit",
+				icon: <EditIcon />,
+			},
+		],
+	},
+	{
+		title: "Analytics & Views",
+		items: [
+			{
+				id: "views",
+				label: "Manage Views",
+				path: "/views",
+				icon: <EyeIcon />,
+			},
+			{
+				id: "analytics",
+				label: "Analytics",
+				path: "/analytics",
+				icon: <ChartBarIcon />,
+			},
+		],
+	},
+	{
+		title: "Organization",
+		items: [
+			{
+				id: "tags",
+				label: "Tags",
+				path: "/tags",
+				icon: <TagIcon />,
+			},
+			{
+				id: "categories",
+				label: "Categories",
+				path: "/categories",
+				icon: <CategoryIcon />,
+			},
+		],
+	},
+	{
+		title: "System",
+		items: [
+			{
+				id: "settings",
+				label: "Settings",
+				path: "/settings",
+				icon: <SettingsIcon />,
+			},
+		],
+	},
+];
 
-const TagIcon = () => (
-	<svg
-		xmlns="http://www.w3.org/2000/svg"
-		className="w-5 h-5"
-		viewBox="0 0 20 20"
-		fill="currentColor">
-		<path
-			fillRule="evenodd"
-			d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z"
-			clipRule="evenodd"
-		/>
-	</svg>
-);
+export const Sidebar: React.FC<SidebarProps> = ({
+	sections = defaultSections,
+	className = "",
+}) => {
+	const location = useLocation();
 
-const CategoryIcon = () => (
-	<svg
-		xmlns="http://www.w3.org/2000/svg"
-		className="w-5 h-5"
-		viewBox="0 0 20 20"
-		fill="currentColor">
-		<path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
-	</svg>
-);
-
-const Sidebar = () => {
-	const [collapsed, setCollapsed] = useState(false);
-
-	const menuItems = [
-		{ path: "/admin", name: "Create Content", icon: <AdminIcon /> },
-		{ path: "/edit", name: "Edit Content", icon: <EditIcon /> },
-		{ path: "/tags", name: "Tags", icon: <TagIcon /> },
-		{ path: "/categories", name: "Categories", icon: <CategoryIcon /> },
-		{ path: "/settings", name: "Settings", icon: <SettingsIcon /> },
-	];
+	const isActive = (path: string) => {
+		return location.pathname === path;
+	};
 
 	return (
 		<div
-			className={`bg-white shadow-lg transition-all duration-100 ${
-				collapsed ? "w-16" : "w-64"
-			} h-screen`}>
-			{/* Logo / App Title */}
-			<div className="flex justify-between items-center p-4 border-b">
-				{!collapsed && (
-					<h1 className="text-xl font-bold text-gray-800 text-nowrap">
-						Content Manager
-					</h1>
-				)}
-				<button
-					onClick={() => setCollapsed(!collapsed)}
-					className="p-1 rounded-full hover:bg-gray-200 focus:outline-none">
-					{collapsed ? (
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							className="w-5 h-5"
-							viewBox="0 0 20 20"
-							fill="currentColor">
-							<path
-								fillRule="evenodd"
-								d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-								clipRule="evenodd"
-							/>
-						</svg>
-					) : (
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							className="w-5 h-5"
-							viewBox="0 0 20 20"
-							fill="currentColor">
-							<path
-								fillRule="evenodd"
-								d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-								clipRule="evenodd"
-							/>
-						</svg>
-					)}
-				</button>
+			className={`flex flex-col w-64 h-screen bg-white border-r border-gray-200 ${className}`}>
+			{/* Header */}
+			<div className="flex items-center px-6 py-4 border-b border-gray-200">
+				<div className="flex items-center">
+					<div className="flex justify-center items-center w-8 h-8 bg-blue-600 rounded-lg">
+						<AppIcon />
+					</div>
+					<div className="ml-3">
+						<h1 className="text-lg font-semibold text-gray-800">
+							Content Manager
+						</h1>
+					</div>
+				</div>
 			</div>
 
-			{/* Navigation Menu */}
-			<nav className="mt-6">
-				<ul className="space-y-2">
-					{menuItems.map((item) => (
-						<li key={item.path}>
-							<NavLink
-								to={item.path}
-								className={({ isActive }) =>
-									`flex items-center px-4 py-3.5 text-gray-600 transition-colors duration-300 ${
-										isActive
-											? "bg-blue-50 text-blue-600 border-r-4 border-blue-500"
-											: "hover:bg-gray-100"
-									}`
-								}>
-								<span className="mr-3">{item.icon}</span>
-								{!collapsed && (
-									<span className="text-nowrap ">{item.name}</span>
-								)}
-							</NavLink>
-						</li>
+			{/* Navigation */}
+			<nav className="overflow-y-auto flex-1 px-4 py-4">
+				<div className="space-y-6">
+					{sections.map((section, sectionIndex) => (
+						<div key={sectionIndex}>
+							{section.title && (
+								<h3 className="px-2 mb-2 text-xs font-semibold tracking-wider text-gray-500 uppercase">
+									{section.title}
+								</h3>
+							)}
+							<div className="space-y-1">
+								{section.items.map((item) => (
+									<Link
+										key={item.id}
+										to={item.path}
+										className={`flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
+											isActive(item.path)
+												? "text-blue-700 bg-blue-100 border-r-2 border-blue-700"
+												: "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+										}`}>
+										<span className="mr-3">{item.icon}</span>
+										<span className="flex-1">{item.label}</span>
+										{item.badge && (
+											<span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+												{item.badge}
+											</span>
+										)}
+									</Link>
+								))}
+							</div>
+						</div>
 					))}
-				</ul>
+				</div>
 			</nav>
+
+			{/* Footer */}
+			<div className="px-4 py-4 border-t border-gray-200">
+				<div className="flex items-center px-2 py-2 text-sm text-gray-500">
+					<svg
+						className="mr-2 w-4 h-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor">
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+						/>
+					</svg>
+					<span>v1.0.0</span>
+				</div>
+			</div>
 		</div>
 	);
 };
-
-export default Sidebar;

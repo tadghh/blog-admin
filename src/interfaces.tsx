@@ -7,6 +7,22 @@ export interface BlogPost {
 	file_name: string; // Required
 }
 
+export interface BlogPostWithViews {
+	id: number;
+	title: string;
+	created: string;
+	description: string;
+	image_name: string | null;
+	file_name: string;
+	view_count: number;
+}
+
+export interface BlogPostView {
+	id: number;
+	blog_post_id: number;
+	ip_address: string;
+}
+
 export interface Project {
 	id: number;
 	title: string;

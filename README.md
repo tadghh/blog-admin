@@ -1,7 +1,7 @@
-# Tauri + React + Typescript
+# Blog admin
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+- vibe slop
 
-## Recommended IDE Setup
+## Todo
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- Finish cleaning up slop

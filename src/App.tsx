@@ -12,7 +12,9 @@ import Settings from "./settings";
 import DatabaseConnection from "./bootup";
 import TagManagement from "./TagManagement";
 import CategoryManagement from "./CategoryManagement";
-import Sidebar from "./components/Sidebar";
+import Views from "./Views";
+import Analytics from "./Analytics";
+import { Sidebar } from "./components/index";
 import "./App.css";
 
 function App() {
@@ -39,7 +41,10 @@ function App() {
 	if (isLoading) {
 		return (
 			<div className="flex justify-center items-center min-h-screen bg-gray-50">
-				<div className="w-12 h-12 rounded-full border-b-2 border-blue-500 animate-spin"></div>
+				<div className="flex flex-col items-center space-y-4">
+					<div className="w-12 h-12 rounded-full border-b-2 border-blue-500 animate-spin"></div>
+					<p className="text-sm text-gray-600">Loading application...</p>
+				</div>
 			</div>
 		);
 	}
@@ -50,16 +55,18 @@ function App() {
 
 	return (
 		<Router>
-			<div className="flex h-screen bg-gray-50 overflow-hidden">
+			<div className="flex overflow-hidden h-screen bg-gray-50">
 				{/* Sidebar */}
 				<Sidebar />
 
 				{/* Main Content */}
-				<div className="flex-1 overflow-auto">
+				<div className="overflow-auto flex-1">
 					<div className="p-6 mx-auto max-w-7xl">
 						<Routes>
 							<Route path="/admin" element={<AdminForms />} />
 							<Route path="/edit" element={<EditForms />} />
+							<Route path="/views" element={<Views />} />
+							<Route path="/analytics" element={<Analytics />} />
 							<Route path="/settings" element={<Settings />} />
 							<Route path="/tags" element={<TagManagement />} />
 							<Route path="/categories" element={<CategoryManagement />} />

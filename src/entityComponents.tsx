@@ -10,11 +10,8 @@ import {
 	SectionDivider,
 	TagDisplay,
 	ToggleSwitch,
-	EditIcon,
-	SaveIcon,
-	DeleteIcon,
-	ImageIcon,
 } from "./components";
+import { EditIcon, SaveIcon, DeleteIcon, ImageIcon } from "./Icons";
 
 // Types
 export interface BlogPost {
@@ -77,7 +74,7 @@ export const BlogPostItem: React.FC<BlogPostProps> = ({
 }) => {
 	return (
 		<div className="p-6">
-			<div className="flex flex-col sm:flex-row gap-4">
+			<div className="flex flex-col gap-4 sm:flex-row">
 				{/* Thumbnail */}
 				<div
 					onClick={() => !post.isEditing && onUpdateImage(post)}
@@ -105,7 +102,7 @@ export const BlogPostItem: React.FC<BlogPostProps> = ({
 						editComponent={
 							<input
 								type="text"
-								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								value={post.title}
 								onChange={(e) => onUpdate(post.id, "title", e.target.value)}
 							/>
@@ -123,7 +120,7 @@ export const BlogPostItem: React.FC<BlogPostProps> = ({
 						editComponent={
 							<input
 								type="date"
-								className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								className="px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								value={post.created}
 								onChange={(e) => onUpdate(post.id, "created", e.target.value)}
 							/>
@@ -140,7 +137,7 @@ export const BlogPostItem: React.FC<BlogPostProps> = ({
 						isEditing={post.isEditing || false}
 						editComponent={
 							<textarea
-								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								value={post.description}
 								onChange={(e) =>
 									onUpdate(post.id, "description", e.target.value)
@@ -155,7 +152,7 @@ export const BlogPostItem: React.FC<BlogPostProps> = ({
 				</div>
 
 				{/* Actions */}
-				<div className="flex flex-row sm:flex-col justify-end gap-2">
+				<div className="flex flex-row gap-2 justify-end sm:flex-col">
 					{post.isEditing ? (
 						<>
 							<ActionButton
@@ -243,7 +240,7 @@ export const ProjectItem: React.FC<ProjectProps> = ({
 }) => {
 	return (
 		<div className="p-6">
-			<div className="flex flex-col lg:flex-row gap-4">
+			<div className="flex flex-col gap-4 lg:flex-row">
 				{/* Project Image (if image upload enabled) */}
 				{onUpdateImage && (
 					<div
@@ -273,7 +270,7 @@ export const ProjectItem: React.FC<ProjectProps> = ({
 						editComponent={
 							<input
 								type="text"
-								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								value={project.title}
 								onChange={(e) => onUpdate(project.id, "title", e.target.value)}
 							/>
@@ -290,7 +287,7 @@ export const ProjectItem: React.FC<ProjectProps> = ({
 						isEditing={project.isEditing || false}
 						editComponent={
 							<textarea
-								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								value={project.description || ""}
 								onChange={(e) =>
 									onUpdate(project.id, "description", e.target.value)
@@ -311,7 +308,7 @@ export const ProjectItem: React.FC<ProjectProps> = ({
 						editComponent={
 							<input
 								type="url"
-								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								value={project.url || ""}
 								onChange={(e) => onUpdate(project.id, "url", e.target.value)}
 							/>
@@ -335,7 +332,7 @@ export const ProjectItem: React.FC<ProjectProps> = ({
 				</div>
 
 				{/* Status and Actions */}
-				<div className="lg:w-64 space-y-4">
+				<div className="space-y-4 lg:w-64">
 					{/* Status Toggles */}
 					<div className="space-y-2">
 						<ToggleSwitch
