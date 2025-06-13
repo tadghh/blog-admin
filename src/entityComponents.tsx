@@ -415,8 +415,8 @@ export const ProjectItem: React.FC<ProjectProps> = ({
  * Generic image uploader that works for both blog posts and projects
  */
 export const createImageUploader = (settings: {
-	blog_images_path: string | null;
-	blog_folder_path: string | null;
+	blog_images_path?: string | null;
+	blog_folder_path?: string | null;
 }) => {
 	return async <T extends BlogPost | Project>(
 		entity: T,
@@ -493,8 +493,8 @@ export const createImageUploader = (settings: {
  * Blog-specific image uploader
  */
 export const createBlogImageUploader = (settings: {
-	blog_images_path: string | null;
-	blog_folder_path: string | null;
+	blog_images_path?: string | null;
+	blog_folder_path?: string | null;
 }) => {
 	const imageUploader = createImageUploader(settings);
 
@@ -518,8 +518,8 @@ export const createBlogImageUploader = (settings: {
  * Project-specific image uploader
  */
 export const createProjectImageUploader = (settings: {
-	blog_images_path: string | null;
-	blog_folder_path: string | null;
+	blog_images_path?: string | null;
+	blog_folder_path?: string | null;
 }) => {
 	const imageUploader = createImageUploader(settings);
 

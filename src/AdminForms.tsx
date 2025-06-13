@@ -68,7 +68,7 @@ const AdminForms = () => {
 	async function uploadFile(
 		webFile: URL,
 		fileName: string,
-		destPath: string | null
+		destPath: string | null | undefined
 	) {
 		if (!destPath) {
 			throw new Error("Destination path not set");

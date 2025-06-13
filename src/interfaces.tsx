@@ -56,8 +56,8 @@ export interface Settings {
 	current_profile?: string | null;
 
 	// Legacy fields for backward compatibility
-	blog_images_path?: string | null;
-	blog_folder_path?: string | null;
+	blog_images_path?: string | null | undefined;
+	blog_folder_path?: string | null | undefined;
 	database_connection?: DatabaseConnectionInfo | null;
 	save_database_connection?: boolean | null;
 }
