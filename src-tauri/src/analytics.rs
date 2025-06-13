@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::IpAddr;
 use tauri::State;
 use tokio::sync::Mutex;
 
