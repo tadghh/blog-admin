@@ -7,6 +7,7 @@ use serde::Deserialize;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tauri::{Manager, State};
 use tokio::sync::Mutex;
+
 mod settings;
 use settings::*;
 mod blog;
@@ -17,6 +18,10 @@ mod projects;
 use projects::*;
 mod caterogies;
 use caterogies::*;
+mod views;
+use views::*;
+mod analytics;
+use analytics::*;
 
 #[derive(Deserialize)]
 struct ConnectionConfig {
@@ -49,6 +54,21 @@ async fn connect_db(
     Ok(true)
 }
 
+#[tauri::command]
+async fn check_db_connection(state: State<'_, Mutex<AppState>>) -> Result<bool, String> {
+    let state = state.lock().await;
+    match &state.pool {
+        Some(pool) => {
+            // Try a simple query to verify the connection is still valid
+            match sqlx::query("SELECT 1").execute(pool).await {
+                Ok(_) => Ok(true),
+                Err(_) => Ok(false),
+            }
+        }
+        None => Ok(false),
+    }
+}
+
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
@@ -77,6 +97,7 @@ async fn main() {
             save_settings,
             load_settings,
             connect_db,
+            check_db_connection,
             update_blog_tags,
             update_project_tags,
             get_categories,
@@ -88,7 +109,12 @@ async fn main() {
             remove_category_from_tag,
             get_category_tags,
             delete_blog_post,
-            delete_project
+            delete_project,
+            get_blog_posts_with_views,
+            add_view_to_blog_post,
+            add_multiple_views_to_blog_post,
+            get_blog_post_views,
+            get_view_analytics
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

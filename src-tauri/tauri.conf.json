@@ -34,6 +34,8 @@
 						"core:default",
 						"dialog:allow-open",
 						"dialog:allow-ask",
+						"dialog:allow-message",
+						"dialog:default",
 						"fs:allow-read",
 						"fs:read-all",
 						"fs:read-dirs",
