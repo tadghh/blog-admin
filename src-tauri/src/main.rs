@@ -58,13 +58,10 @@ async fn connect_db(
 async fn check_db_connection(state: State<'_, Mutex<AppState>>) -> Result<bool, String> {
     let state = state.lock().await;
     match &state.pool {
-        Some(pool) => {
-            // Try a simple query to verify the connection is still valid
-            match sqlx::query("SELECT 1").execute(pool).await {
-                Ok(_) => Ok(true),
-                Err(_) => Ok(false),
-            }
-        }
+        Some(pool) => match sqlx::query("SELECT 1").execute(pool).await {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
+        },
         None => Ok(false),
     }
 }
@@ -96,6 +93,11 @@ async fn main() {
             delete_tag,
             save_settings,
             load_settings,
+            save_profile,
+            delete_profile,
+            set_current_profile,
+            get_profiles,
+            get_current_profile,
             connect_db,
             check_db_connection,
             update_blog_tags,

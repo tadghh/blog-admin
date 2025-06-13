@@ -28,4 +28,5 @@ export { CountryFlag } from "./CountryFlag";
 export { DataTable } from "./DataTable";
 export { Pagination } from "./Pagination";
 export { Sidebar } from "./Sidebar";
+export { ProfileManager } from "../ProfileManager";
 export * from "../Icons";

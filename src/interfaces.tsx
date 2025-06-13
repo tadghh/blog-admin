@@ -42,9 +42,22 @@ export interface DatabaseConnectionInfo {
 	password: string;
 }
 
-export interface Settings {
+export interface Profile {
+	name: string;
+	database_connection: DatabaseConnectionInfo;
 	blog_images_path: string | null;
 	blog_folder_path: string | null;
+	created_at?: string | null;
+}
+
+export interface Settings {
+	// New profile-based structure
+	profiles?: Profile[];
+	current_profile?: string | null;
+
+	// Legacy fields for backward compatibility
+	blog_images_path?: string | null;
+	blog_folder_path?: string | null;
 	database_connection?: DatabaseConnectionInfo | null;
 	save_database_connection?: boolean | null;
 }

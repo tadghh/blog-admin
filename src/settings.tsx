@@ -2,141 +2,235 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { LoadingSpinner, ContentCard } from "./components";
-import { Notification } from "./components/index";
+import { Notification, Modal, ConfirmationDialog } from "./components/index";
+import { Profile } from "./interfaces";
+import {
+	EditIcon,
+	DeleteIcon,
+	FolderIcon,
+	PlusIcon,
+	SuccessIcon,
+	WarningIcon,
+} from "./Icons";
 
-interface DatabaseConnectionInfo {
-	host: string;
-	port: string;
-	database: string;
-	username: string;
-	password: string;
-}
-
-interface Settings {
-	blog_images_path: string | null;
-	blog_folder_path: string | null;
-	database_connection?: DatabaseConnectionInfo | null;
-	save_database_connection?: boolean | null;
+interface ProfileFormData {
+	name: string;
+	database_connection: {
+		host: string;
+		port: string;
+		database: string;
+		username: string;
+		password: string;
+	};
+	blog_images_path: string;
+	blog_folder_path: string;
 }
 
 export default function SettingsPage() {
-	const [settings, setSettings] = useState<Settings>({
-		blog_images_path: "",
-		blog_folder_path: "",
-		database_connection: null,
-		save_database_connection: false,
-	});
+	const [profiles, setProfiles] = useState<Profile[]>([]);
+	const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
 	const [loading, setLoading] = useState(true);
-	const [savingImages, setSavingImages] = useState(false);
-	const [savingFiles, setSavingFiles] = useState(false);
-	const [clearingConnection, setClearingConnection] = useState(false);
 	const [error, setError] = useState("");
 	const [successMessage, setSuccessMessage] = useState("");
+	const [showCreateModal, setShowCreateModal] = useState(false);
+	const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
+	const [confirmDialog, setConfirmDialog] = useState<{
+		isOpen: boolean;
+		profileName: string;
+	}>({
+		isOpen: false,
+		profileName: "",
+	});
+
+	const [formData, setFormData] = useState<ProfileFormData>({
+		name: "",
+		database_connection: {
+			host: "localhost",
+			port: "5432",
+			database: "tadgh_blog_db",
+			username: "postgres",
+			password: "",
+		},
+		blog_images_path: "",
+		blog_folder_path: "",
+	});
 
 	useEffect(() => {
-		loadSettings();
+		loadProfiles();
+		loadCurrentProfile();
 	}, []);
 
-	const loadSettings = async () => {
+	const loadProfiles = async () => {
+		try {
+			const profileList = await invoke<Profile[]>("get_profiles");
+			setProfiles(profileList);
+		} catch (err) {
+			setError(`Failed to load profiles: ${err}`);
+		}
+	};
+
+	const loadCurrentProfile = async () => {
 		setLoading(true);
 		try {
-			const saved = await invoke<Settings>("load_settings");
-			setSettings(saved);
+			const current = await invoke<Profile | null>("get_current_profile");
+			setCurrentProfile(current);
 		} catch (err) {
-			setError(`Failed to load settings: ${err}`);
+			setError(`Failed to load current profile: ${err}`);
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	const selectImagePath = async () => {
+	const saveProfile = async () => {
+		if (!formData.name.trim()) {
+			setError("Profile name is required");
+			return;
+		}
+
 		try {
-			const data = await open({
-				directory: true,
-				multiple: false,
-				title: "Select Blog Images Directory",
-			});
+			const profile: Profile = {
+				name: formData.name.trim(),
+				database_connection: formData.database_connection,
+				blog_images_path: formData.blog_images_path || null,
+				blog_folder_path: formData.blog_folder_path || null,
+			};
 
-			if (!data) return; // User cancelled
+			await invoke("save_profile", { profile });
+			await loadProfiles();
 
-			setSavingImages(true);
-			await invoke("save_settings", {
-				settings: { blog_images_path: data },
-			});
+			// If this is the current profile, update it
+			if (currentProfile && currentProfile.name === profile.name) {
+				setCurrentProfile(profile);
+			}
 
-			setSettings((prev) => ({
-				...prev,
-				blog_images_path: data,
-			}));
-
-			setSuccessMessage("Blog images directory updated successfully!");
+			resetForm();
+			setSuccessMessage(`Profile "${profile.name}" saved successfully!`);
 		} catch (err) {
-			setError(`Failed to update image path: ${err}`);
-		} finally {
-			setSavingImages(false);
+			setError(`Failed to save profile: ${err}`);
 		}
 	};
 
-	const selectBlogPath = async () => {
+	const deleteProfile = async (profileName: string) => {
 		try {
-			const data = await open({
-				directory: true,
-				multiple: false,
-				title: "Select Blog Files Directory",
-			});
+			await invoke("delete_profile", { profileName });
+			await loadProfiles();
 
-			if (!data) return; // User cancelled
+			// If we deleted the current profile, clear it
+			if (currentProfile && currentProfile.name === profileName) {
+				setCurrentProfile(null);
+			}
 
-			setSavingFiles(true);
-			await invoke("save_settings", {
-				settings: { blog_folder_path: data },
-			});
-
-			setSettings((prev) => ({
-				...prev,
-				blog_folder_path: data,
-			}));
-
-			setSuccessMessage("Blog files directory updated successfully!");
+			setSuccessMessage(`Profile "${profileName}" deleted successfully!`);
 		} catch (err) {
-			setError(`Failed to update blog path: ${err}`);
-		} finally {
-			setSavingFiles(false);
+			setError(`Failed to delete profile: ${err}`);
 		}
 	};
 
-	const clearSavedConnection = async () => {
-		setClearingConnection(true);
+	const switchToProfile = async (profileName: string) => {
 		try {
-			await invoke("save_settings", {
-				settings: {
-					database_connection: null,
-					save_database_connection: false,
+			await invoke("set_current_profile", { profileName });
+			await loadCurrentProfile();
+			setSuccessMessage(`Switched to profile "${profileName}"`);
+		} catch (err) {
+			setError(`Failed to switch profile: ${err}`);
+		}
+	};
+
+	const resetForm = () => {
+		setFormData({
+			name: "",
+			database_connection: {
+				host: "localhost",
+				port: "5432",
+				database: "tadgh_blog_db",
+				username: "postgres",
+				password: "",
+			},
+			blog_images_path: "",
+			blog_folder_path: "",
+		});
+		setShowCreateModal(false);
+		setEditingProfile(null);
+	};
+
+	const startEdit = (profile: Profile) => {
+		setEditingProfile(profile);
+		setFormData({
+			name: profile.name,
+			database_connection: { ...profile.database_connection },
+			blog_images_path: profile.blog_images_path || "",
+			blog_folder_path: profile.blog_folder_path || "",
+		});
+		setShowCreateModal(true);
+	};
+
+	const handleInputChange = (
+		e: React.ChangeEvent<HTMLInputElement>,
+		section?: "database_connection"
+	) => {
+		const { name, value } = e.target;
+
+		if (section === "database_connection") {
+			setFormData((prev) => ({
+				...prev,
+				database_connection: {
+					...prev.database_connection,
+					[name]: value,
 				},
-			});
-
-			setSettings((prev) => ({
-				...prev,
-				database_connection: null,
-				save_database_connection: false,
 			}));
-
-			setSuccessMessage("Saved database connection cleared successfully!");
-		} catch (err) {
-			setError(`Failed to clear saved connection: ${err}`);
-		} finally {
-			setClearingConnection(false);
+		} else {
+			setFormData((prev) => ({
+				...prev,
+				[name]: value,
+			}));
 		}
 	};
 
-	if (loading && !settings.blog_images_path && !settings.blog_folder_path) {
+	const selectDirectory = async (
+		field: "blog_images_path" | "blog_folder_path"
+	) => {
+		try {
+			const result = await open({
+				directory: true,
+				multiple: false,
+				title: `Select ${
+					field === "blog_images_path" ? "Images" : "Files"
+				} Directory`,
+			});
+
+			if (result) {
+				setFormData((prev) => ({
+					...prev,
+					[field]: result,
+				}));
+			}
+		} catch (err) {
+			setError(`Failed to select directory: ${err}`);
+		}
+	};
+
+	const showDeleteConfirmation = (profileName: string) => {
+		setConfirmDialog({
+			isOpen: true,
+			profileName,
+		});
+	};
+
+	const handleConfirmedDelete = async () => {
+		if (confirmDialog.profileName) {
+			await deleteProfile(confirmDialog.profileName);
+		}
+		setConfirmDialog({ isOpen: false, profileName: "" });
+	};
+
+	if (loading && !currentProfile && profiles.length === 0) {
 		return <LoadingSpinner />;
 	}
 
 	return (
 		<div className="space-y-6">
 			<div className="flex justify-between items-center">
-				<h1 className="text-2xl font-bold text-gray-800">Settings</h1>
+				<h1 className="text-2xl font-bold text-gray-800">Profile Management</h1>
 			</div>
 
 			{/* Notifications */}
@@ -151,501 +245,321 @@ export default function SettingsPage() {
 				onDismiss={() => setSuccessMessage("")}
 			/>
 
-			{/* Database Connection Settings */}
+			{/* Current Profile */}
 			<ContentCard>
 				<div className="p-6">
-					<div className="space-y-6">
-						<div>
-							<h3 className="text-lg font-medium text-gray-900">
-								Database Connection
-							</h3>
-							<p className="mt-1 text-sm text-gray-500">
-								Manage your saved database connection settings
-							</p>
-						</div>
-
-						{settings.database_connection &&
-						settings.save_database_connection ? (
-							<div className="p-4 bg-green-50 rounded-lg border border-green-200">
-								<div className="flex justify-between items-start">
-									<div>
-										<div className="flex items-center mb-2">
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												className="mr-2 w-5 h-5 text-green-600"
-												viewBox="0 0 20 20"
-												fill="currentColor">
-												<path
-													fillRule="evenodd"
-													d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-													clipRule="evenodd"
-												/>
-											</svg>
-											<span className="text-sm font-medium text-green-800">
-												Saved Connection Found
-											</span>
-										</div>
-										<div className="space-y-1 text-sm text-green-700">
-											<p>
-												<span className="font-medium">Host:</span>{" "}
-												{settings.database_connection.host}
-											</p>
-											<p>
-												<span className="font-medium">Port:</span>{" "}
-												{settings.database_connection.port}
-											</p>
-											<p>
-												<span className="font-medium">Database:</span>{" "}
-												{settings.database_connection.database}
-											</p>
-											<p>
-												<span className="font-medium">Username:</span>{" "}
-												{settings.database_connection.username}
-											</p>
-											<p>
-												<span className="font-medium">Password:</span>{" "}
-												{"•".repeat(
-													settings.database_connection.password.length
-												)}
-											</p>
-										</div>
-									</div>
-									<button
-										onClick={clearSavedConnection}
-										disabled={clearingConnection}
-										className="px-3 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50">
-										{clearingConnection ? (
-											<>
-												<svg
-													className="inline mr-2 w-4 h-4 animate-spin"
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24">
-													<circle
-														className="opacity-25"
-														cx="12"
-														cy="12"
-														r="10"
-														stroke="currentColor"
-														strokeWidth="4"></circle>
-													<path
-														className="opacity-75"
-														fill="currentColor"
-														d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-												</svg>
-												Clearing...
-											</>
-										) : (
-											"Clear Saved Connection"
-										)}
-									</button>
-								</div>
-							</div>
-						) : (
-							<div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-								<div className="flex items-center">
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										className="mr-2 w-5 h-5 text-gray-500"
-										viewBox="0 0 20 20"
-										fill="currentColor">
-										<path
-											fillRule="evenodd"
-											d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-											clipRule="evenodd"
-										/>
-									</svg>
-									<span className="text-sm text-gray-700">
-										No saved database connection. You can save your connection
-										details on the next login for convenience.
-									</span>
-								</div>
-							</div>
+					<div className="flex justify-between items-center mb-4">
+						<h3 className="text-lg font-medium text-gray-900">
+							Current Profile
+						</h3>
+						{currentProfile && (
+							<button
+								onClick={() => startEdit(currentProfile)}
+								className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100">
+								<EditIcon className="mr-2 w-4 h-4" />
+								Edit Current Profile
+							</button>
 						)}
 					</div>
+
+					{currentProfile ? (
+						<div className="p-4 bg-green-50 rounded-lg border border-green-200">
+							<div className="flex items-center mb-3">
+								<SuccessIcon className="mr-2 w-5 h-5 text-green-600" />
+								<h4 className="text-lg font-semibold text-green-800">
+									{currentProfile.name}
+								</h4>
+							</div>
+							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+								<div>
+									<p className="text-sm text-green-700">
+										<span className="font-medium">Host:</span>{" "}
+										{currentProfile.database_connection.host}
+									</p>
+									<p className="text-sm text-green-700">
+										<span className="font-medium">Database:</span>{" "}
+										{currentProfile.database_connection.database}
+									</p>
+								</div>
+								<div>
+									<p className="text-sm text-green-700">
+										<span className="font-medium">Images:</span>{" "}
+										{currentProfile.blog_images_path || "Not configured"}
+									</p>
+									<p className="text-sm text-green-700">
+										<span className="font-medium">Files:</span>{" "}
+										{currentProfile.blog_folder_path || "Not configured"}
+									</p>
+								</div>
+							</div>
+						</div>
+					) : (
+						<div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+							<div className="flex items-center">
+								<WarningIcon className="mr-2 w-5 h-5 text-yellow-600" />
+								<span className="text-sm text-yellow-700">
+									No profile is currently active. Select a profile from the list
+									below.
+								</span>
+							</div>
+						</div>
+					)}
 				</div>
 			</ContentCard>
 
-			{/* Directory Settings */}
+			{/* All Profiles */}
 			<ContentCard>
 				<div className="p-6">
-					<div className="space-y-6">
-						<div>
-							<h3 className="text-lg font-medium text-gray-900">
-								Directory Paths
-							</h3>
-							<p className="mt-1 text-sm text-gray-500">
-								Configure the directories where your blog images and files are
-								stored
-							</p>
-						</div>
+					<div className="flex justify-between items-center mb-4">
+						<h3 className="text-lg font-medium text-gray-900">All Profiles</h3>
+						<button
+							onClick={() => setShowCreateModal(true)}
+							className="flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+							<PlusIcon className="mr-2 w-4 h-4" />
+							Create New Profile
+						</button>
+					</div>
 
-						<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-							{/* Blog Images Directory */}
-							<div className="space-y-2">
-								<label className="block text-sm font-medium text-gray-700">
+					{profiles.length === 0 ? (
+						<div className="p-8 text-center text-gray-500">
+							No profiles found. Create your first profile to get started.
+						</div>
+					) : (
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+							{profiles.map((profile) => (
+								<div
+									key={profile.name}
+									className={`p-4 rounded-lg border-2 transition-colors ${
+										currentProfile?.name === profile.name
+											? "border-green-500 bg-green-50"
+											: "border-gray-200 bg-white hover:border-gray-300"
+									}`}>
+									<div className="flex justify-between items-start mb-3">
+										<h4 className="font-semibold text-gray-800">
+											{profile.name}
+										</h4>
+										<div className="flex gap-1">
+											<button
+												onClick={() => startEdit(profile)}
+												className="p-1 text-blue-600 rounded hover:bg-blue-50"
+												title="Edit profile">
+												<EditIcon className="w-4 h-4" />
+											</button>
+											<button
+												onClick={() => showDeleteConfirmation(profile.name)}
+												className="p-1 text-red-600 rounded hover:bg-red-50"
+												title="Delete profile">
+												<DeleteIcon className="w-4 h-4" />
+											</button>
+										</div>
+									</div>
+
+									<div className="mb-4 space-y-2 text-sm text-gray-600">
+										<div>
+											<span className="font-medium">Host:</span>{" "}
+											{profile.database_connection.host}
+										</div>
+										<div>
+											<span className="font-medium">Database:</span>{" "}
+											{profile.database_connection.database}
+										</div>
+										<div>
+											<span className="font-medium">Images:</span>{" "}
+											{profile.blog_images_path ? "✓" : "Not set"}
+										</div>
+										<div>
+											<span className="font-medium">Files:</span>{" "}
+											{profile.blog_folder_path ? "✓" : "Not set"}
+										</div>
+									</div>
+
+									{currentProfile?.name !== profile.name && (
+										<button
+											onClick={() => switchToProfile(profile.name)}
+											className="px-3 py-2 w-full text-sm font-medium text-blue-600 rounded-md border border-blue-600 hover:bg-blue-50">
+											Switch to this Profile
+										</button>
+									)}
+								</div>
+							))}
+						</div>
+					)}
+				</div>
+			</ContentCard>
+
+			{/* Create/Edit Profile Modal */}
+			<Modal
+				isOpen={showCreateModal}
+				onClose={resetForm}
+				title={editingProfile ? "Edit Profile" : "Create New Profile"}
+				size="lg">
+				<div className="space-y-6">
+					{/* Profile Name */}
+					<div>
+						<label className="block mb-1 text-sm font-medium text-gray-700">
+							Profile Name
+						</label>
+						<input
+							type="text"
+							name="name"
+							value={formData.name}
+							onChange={handleInputChange}
+							className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+							placeholder="Enter profile name"
+							required
+						/>
+					</div>
+
+					{/* Database Connection */}
+					<div>
+						<h4 className="mb-3 text-sm font-medium text-gray-700">
+							Database Connection
+						</h4>
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<div>
+								<label className="block mb-1 text-xs text-gray-600">Host</label>
+								<input
+									type="text"
+									name="host"
+									value={formData.database_connection.host}
+									onChange={(e) => handleInputChange(e, "database_connection")}
+									className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+									required
+								/>
+							</div>
+							<div>
+								<label className="block mb-1 text-xs text-gray-600">Port</label>
+								<input
+									type="text"
+									name="port"
+									value={formData.database_connection.port}
+									onChange={(e) => handleInputChange(e, "database_connection")}
+									className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+									required
+								/>
+							</div>
+							<div>
+								<label className="block mb-1 text-xs text-gray-600">
+									Database
+								</label>
+								<input
+									type="text"
+									name="database"
+									value={formData.database_connection.database}
+									onChange={(e) => handleInputChange(e, "database_connection")}
+									className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+									required
+								/>
+							</div>
+							<div>
+								<label className="block mb-1 text-xs text-gray-600">
+									Username
+								</label>
+								<input
+									type="text"
+									name="username"
+									value={formData.database_connection.username}
+									onChange={(e) => handleInputChange(e, "database_connection")}
+									className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+									required
+								/>
+							</div>
+						</div>
+						<div className="mt-4">
+							<label className="block mb-1 text-xs text-gray-600">
+								Password
+							</label>
+							<input
+								type="password"
+								name="password"
+								value={formData.database_connection.password}
+								onChange={(e) => handleInputChange(e, "database_connection")}
+								className="px-3 py-2 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+								placeholder="Enter database password"
+							/>
+						</div>
+					</div>
+
+					{/* Blog Directories */}
+					<div>
+						<h4 className="mb-3 text-sm font-medium text-gray-700">
+							Blog Directories
+						</h4>
+						<div className="space-y-4">
+							<div>
+								<label className="block mb-1 text-xs text-gray-600">
 									Blog Images Directory
 								</label>
 								<div className="flex gap-2">
 									<input
 										type="text"
-										value={settings.blog_images_path || ""}
+										value={formData.blog_images_path}
 										readOnly
-										className="flex-1 px-3 py-2 bg-gray-50 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-										placeholder="No directory selected"
+										className="flex-1 px-3 py-2 bg-gray-50 rounded-md border border-gray-300"
+										placeholder="Select directory for blog images"
 									/>
 									<button
-										onClick={selectImagePath}
-										disabled={savingImages}
-										className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50">
-										{savingImages ? (
-											<>
-												<svg
-													className="mr-2 w-4 h-4 text-white animate-spin"
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24">
-													<circle
-														className="opacity-25"
-														cx="12"
-														cy="12"
-														r="10"
-														stroke="currentColor"
-														strokeWidth="4"></circle>
-													<path
-														className="opacity-75"
-														fill="currentColor"
-														d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-												</svg>
-												Saving...
-											</>
-										) : (
-											<>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													className="mr-2 w-4 h-4"
-													viewBox="0 0 20 20"
-													fill="currentColor">
-													<path
-														fillRule="evenodd"
-														d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1H8a3 3 0 00-3 3v1.5a1.5 1.5 0 01-3 0V6z"
-														clipRule="evenodd"
-													/>
-													<path d="M6 12a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2H2h2a2 2 0 002-2v-2z" />
-												</svg>
-												Browse
-											</>
-										)}
+										type="button"
+										onClick={() => selectDirectory("blog_images_path")}
+										className="flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+										<FolderIcon className="mr-2 w-4 h-4" />
+										Browse
 									</button>
 								</div>
-								<p className="text-xs text-gray-500">
-									Directory where blog post images will be stored
-								</p>
 							</div>
-
-							{/* Blog Files Directory */}
-							<div className="space-y-2">
-								<label className="block text-sm font-medium text-gray-700">
+							<div>
+								<label className="block mb-1 text-xs text-gray-600">
 									Blog Files Directory
 								</label>
 								<div className="flex gap-2">
 									<input
 										type="text"
-										value={settings.blog_folder_path || ""}
+										value={formData.blog_folder_path}
 										readOnly
-										className="flex-1 px-3 py-2 bg-gray-50 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-										placeholder="No directory selected"
+										className="flex-1 px-3 py-2 bg-gray-50 rounded-md border border-gray-300"
+										placeholder="Select directory for blog files"
 									/>
 									<button
-										onClick={selectBlogPath}
-										disabled={savingFiles}
-										className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50">
-										{savingFiles ? (
-											<>
-												<svg
-													className="mr-2 w-4 h-4 text-white animate-spin"
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24">
-													<circle
-														className="opacity-25"
-														cx="12"
-														cy="12"
-														r="10"
-														stroke="currentColor"
-														strokeWidth="4"></circle>
-													<path
-														className="opacity-75"
-														fill="currentColor"
-														d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-												</svg>
-												Saving...
-											</>
-										) : (
-											<>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													className="mr-2 w-4 h-4"
-													viewBox="0 0 20 20"
-													fill="currentColor">
-													<path
-														fillRule="evenodd"
-														d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1H8a3 3 0 00-3 3v1.5a1.5 1.5 0 01-3 0V6z"
-														clipRule="evenodd"
-													/>
-													<path d="M6 12a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2H2h2a2 2 0 002-2v-2z" />
-												</svg>
-												Browse
-											</>
-										)}
+										type="button"
+										onClick={() => selectDirectory("blog_folder_path")}
+										className="flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+										<FolderIcon className="mr-2 w-4 h-4" />
+										Browse
 									</button>
 								</div>
-								<p className="text-xs text-gray-500">
-									Directory where blog post content files will be stored
-								</p>
 							</div>
 						</div>
 					</div>
-				</div>
-			</ContentCard>
 
-			{/* Configuration Status */}
-			<ContentCard>
-				<div className="p-6">
-					<h3 className="mb-4 text-lg font-medium text-gray-900">
-						Configuration Status
-					</h3>
-					<div className="space-y-3">
-						<div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-							<span className="text-sm font-medium text-gray-700">
-								Database Connection
-							</span>
-							<div className="flex items-center">
-								{settings.database_connection &&
-								settings.save_database_connection ? (
-									<>
-										<svg
-											className="mr-2 w-5 h-5 text-green-500"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor">
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M5 13l4 4L19 7"
-											/>
-										</svg>
-										<span className="text-sm text-green-600">Saved</span>
-									</>
-								) : (
-									<>
-										<svg
-											className="mr-2 w-5 h-5 text-gray-400"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor">
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M20 12H4"
-											/>
-										</svg>
-										<span className="text-sm text-gray-500">Not Saved</span>
-									</>
-								)}
-							</div>
-						</div>
-
-						<div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-							<span className="text-sm font-medium text-gray-700">
-								Blog Images Directory
-							</span>
-							<div className="flex items-center">
-								{settings.blog_images_path ? (
-									<>
-										<svg
-											className="mr-2 w-5 h-5 text-green-500"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor">
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M5 13l4 4L19 7"
-											/>
-										</svg>
-										<span className="text-sm text-green-600">Configured</span>
-									</>
-								) : (
-									<>
-										<svg
-											className="mr-2 w-5 h-5 text-yellow-500"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor">
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-											/>
-										</svg>
-										<span className="text-sm text-yellow-600">Not Set</span>
-									</>
-								)}
-							</div>
-						</div>
-
-						<div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-							<span className="text-sm font-medium text-gray-700">
-								Blog Files Directory
-							</span>
-							<div className="flex items-center">
-								{settings.blog_folder_path ? (
-									<>
-										<svg
-											className="mr-2 w-5 h-5 text-green-500"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor">
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M5 13l4 4L19 7"
-											/>
-										</svg>
-										<span className="text-sm text-green-600">Configured</span>
-									</>
-								) : (
-									<>
-										<svg
-											className="mr-2 w-5 h-5 text-yellow-500"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor">
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-											/>
-										</svg>
-										<span className="text-sm text-yellow-600">Not Set</span>
-									</>
-								)}
-							</div>
-						</div>
+					{/* Modal Actions */}
+					<div className="flex gap-3 justify-end pt-4 border-t">
+						<button
+							type="button"
+							onClick={resetForm}
+							className="px-4 py-2 text-sm font-medium text-gray-700 bg-white rounded-md border border-gray-300 hover:bg-gray-50">
+							Cancel
+						</button>
+						<button
+							type="button"
+							onClick={saveProfile}
+							className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+							{editingProfile ? "Update Profile" : "Create Profile"}
+						</button>
 					</div>
 				</div>
-			</ContentCard>
+			</Modal>
 
-			{/* Tips and Help */}
-			<ContentCard>
-				<div className="p-6">
-					<h3 className="mb-4 text-lg font-medium text-gray-900">
-						Tips & Information
-					</h3>
-					<div className="space-y-4">
-						<div className="flex">
-							<div className="flex-shrink-0">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="w-5 h-5 text-blue-500"
-									viewBox="0 0 20 20"
-									fill="currentColor">
-									<path
-										fillRule="evenodd"
-										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-										clipRule="evenodd"
-									/>
-								</svg>
-							</div>
-							<p className="ml-3 text-sm text-gray-600">
-								Database connection settings are saved locally and encrypted.
-								You can clear them at any time from this page.
-							</p>
-						</div>
-						<div className="flex">
-							<div className="flex-shrink-0">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="w-5 h-5 text-blue-500"
-									viewBox="0 0 20 20"
-									fill="currentColor">
-									<path
-										fillRule="evenodd"
-										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-										clipRule="evenodd"
-									/>
-								</svg>
-							</div>
-							<p className="ml-3 text-sm text-gray-600">
-								The blog images directory should be accessible to your website
-								and will store all uploaded blog post images.
-							</p>
-						</div>
-						<div className="flex">
-							<div className="flex-shrink-0">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="w-5 h-5 text-blue-500"
-									viewBox="0 0 20 20"
-									fill="currentColor">
-									<path
-										fillRule="evenodd"
-										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-										clipRule="evenodd"
-									/>
-								</svg>
-							</div>
-							<p className="ml-3 text-sm text-gray-600">
-								The blog files directory will store the content files for your
-								blog posts (Markdown, HTML, etc.).
-							</p>
-						</div>
-						<div className="flex">
-							<div className="flex-shrink-0">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="w-5 h-5 text-yellow-500"
-									viewBox="0 0 20 20"
-									fill="currentColor">
-									<path
-										fillRule="evenodd"
-										d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-										clipRule="evenodd"
-									/>
-								</svg>
-							</div>
-							<p className="ml-3 text-sm text-gray-600">
-								Make sure you have write permissions for both directories.
-							</p>
-						</div>
-						<div className="flex">
-							<div className="flex-shrink-0">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									className="w-5 h-5 text-green-500"
-									viewBox="0 0 20 20"
-									fill="currentColor">
-									<path
-										fillRule="evenodd"
-										d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-										clipRule="evenodd"
-									/>
-								</svg>
-							</div>
-							<p className="ml-3 text-sm text-gray-600">
-								Changes are saved automatically when you select a directory.
-							</p>
-						</div>
-					</div>
-				</div>
-			</ContentCard>
+			{/* Confirmation Dialog */}
+			<ConfirmationDialog
+				isOpen={confirmDialog.isOpen}
+				onClose={() => setConfirmDialog({ isOpen: false, profileName: "" })}
+				onConfirm={handleConfirmedDelete}
+				title="Delete Profile"
+				message={`Are you sure you want to delete the profile "${confirmDialog.profileName}"? This action cannot be undone.`}
+				confirmText="Delete Profile"
+				cancelText="Cancel"
+				variant="danger"
+			/>
 		</div>
 	);
 }
