@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { DatabaseConnectionProps } from "./interfaces";
+import {
+	DatabaseConnectionProps,
+	Settings,
+	DatabaseConnectionInfo,
+} from "./interfaces";
 
 const DatabaseConnection = ({ onConnected }: DatabaseConnectionProps) => {
-	const [formData, setFormData] = useState({
+	const [formData, setFormData] = useState<DatabaseConnectionInfo>({
 		host: "localhost",
 		port: "5432",
 		database: "tadgh_blog_db",
@@ -13,6 +17,82 @@ const DatabaseConnection = ({ onConnected }: DatabaseConnectionProps) => {
 
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
+	const [saveConnection, setSaveConnection] = useState(false);
+	const [hasSavedConnection, setHasSavedConnection] = useState(false);
+	const [autoConnecting, setAutoConnecting] = useState(false);
+	const [showManualForm, setShowManualForm] = useState(false);
+	const [loadingSettings, setLoadingSettings] = useState(true);
+
+	useEffect(() => {
+		loadSavedConnection();
+	}, []);
+
+	const loadSavedConnection = async () => {
+		setLoadingSettings(true);
+		try {
+			const settings = await invoke<Settings>("load_settings");
+			if (settings.database_connection && settings.save_database_connection) {
+				setFormData(settings.database_connection);
+				setHasSavedConnection(true);
+				setSaveConnection(true);
+
+				// Don't show manual form initially if we have saved credentials
+				setShowManualForm(false);
+			} else {
+				setShowManualForm(true);
+			}
+		} catch (err) {
+			console.warn("No saved connection settings found:", err);
+			setShowManualForm(true);
+		} finally {
+			setLoadingSettings(false);
+		}
+	};
+
+	const saveConnectionSettings = async (
+		connectionInfo: DatabaseConnectionInfo
+	) => {
+		if (saveConnection) {
+			try {
+				await invoke("save_settings", {
+					settings: {
+						database_connection: connectionInfo,
+						save_database_connection: true,
+					},
+				});
+			} catch (err) {
+				console.error("Failed to save connection settings:", err);
+			}
+		} else {
+			// Clear saved connection if user unchecked save option
+			try {
+				await invoke("save_settings", {
+					settings: {
+						database_connection: null,
+						save_database_connection: false,
+					},
+				});
+			} catch (err) {
+				console.error("Failed to clear connection settings:", err);
+			}
+		}
+	};
+
+	const connectToDatabase = async (connectionInfo: DatabaseConnectionInfo) => {
+		try {
+			await invoke("connect_db", {
+				connectionConfig: {
+					connection_string: `postgres://${connectionInfo.username}:${connectionInfo.password}@${connectionInfo.host}:${connectionInfo.port}/${connectionInfo.database}`,
+				},
+			});
+
+			// Save connection settings if requested
+			await saveConnectionSettings(connectionInfo);
+			onConnected(true);
+		} catch (err) {
+			throw err;
+		}
+	};
 
 	const handleChange = (
 		e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -20,10 +100,15 @@ const DatabaseConnection = ({ onConnected }: DatabaseConnectionProps) => {
 		const { name, value, type } = e.target;
 		const newValue =
 			type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
-		setFormData((prev) => ({
-			...prev,
-			[name]: newValue,
-		}));
+
+		if (name === "saveConnection") {
+			setSaveConnection(newValue as boolean);
+		} else {
+			setFormData((prev) => ({
+				...prev,
+				[name]: newValue,
+			}));
+		}
 	};
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -32,12 +117,7 @@ const DatabaseConnection = ({ onConnected }: DatabaseConnectionProps) => {
 		setError("");
 
 		try {
-			await invoke("connect_db", {
-				connectionConfig: {
-					connection_string: `postgres://${formData.username}:${formData.password}@${formData.host}:${formData.port}/${formData.database}`,
-				},
-			});
-			onConnected(true);
+			await connectToDatabase(formData);
 		} catch (err) {
 			setError((err as Error).toString());
 		} finally {
@@ -45,24 +125,69 @@ const DatabaseConnection = ({ onConnected }: DatabaseConnectionProps) => {
 		}
 	};
 
-	return (
-		<div className="flex justify-center items-center min-h-screen bg-gray-50">
-			<div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-lg">
-				<div className="text-center">
-					<h2 className="text-3xl font-extrabold text-gray-900">
-						Content Manager
-					</h2>
-					<p className="mt-2 text-sm text-gray-600">
-						Connect to your PostgreSQL database to get started
+	const handleAutoConnect = async () => {
+		setAutoConnecting(true);
+		setError("");
+
+		try {
+			await connectToDatabase(formData);
+		} catch (err) {
+			setError((err as Error).toString());
+			setShowManualForm(true);
+		} finally {
+			setAutoConnecting(false);
+		}
+	};
+
+	const handleForgetConnection = async () => {
+		try {
+			await invoke("save_settings", {
+				settings: {
+					database_connection: null,
+					save_database_connection: false,
+				},
+			});
+			setHasSavedConnection(false);
+			setSaveConnection(false);
+			setFormData({
+				host: "localhost",
+				port: "5432",
+				database: "tadgh_blog_db",
+				username: "postgres",
+				password: "",
+			});
+			setShowManualForm(true);
+		} catch (err) {
+			setError("Failed to clear saved connection");
+		}
+	};
+
+	if (loadingSettings) {
+		return (
+			<div className="flex justify-center items-center min-h-screen bg-gray-100">
+				<div className="flex flex-col items-center space-y-4">
+					<div className="w-8 h-8 rounded-full border-b-2 border-blue-500 animate-spin"></div>
+					<p className="text-sm text-gray-600">
+						Loading connection settings...
 					</p>
 				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex justify-center items-center min-h-screen bg-gray-100">
+			<div className="p-8 w-96 bg-white rounded-lg shadow-md">
+				<h2 className="mb-6 text-2xl font-bold text-center">
+					Connect to Database
+				</h2>
 
 				{error && (
-					<div className="p-4 text-sm text-red-700 bg-red-100 rounded-md">
+					<div className="p-3 mb-4 text-red-700 bg-red-100 rounded border border-red-400">
 						<div className="flex">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
-								className="flex-shrink-0 w-5 h-5 mr-3"
+								className="flex-shrink-0 mr-3 w-5 h-5"
 								viewBox="0 0 20 20"
 								fill="currentColor">
 								<path
@@ -76,126 +201,185 @@ const DatabaseConnection = ({ onConnected }: DatabaseConnectionProps) => {
 					</div>
 				)}
 
-				<form onSubmit={handleSubmit} className="mt-8 space-y-6">
-					<div className="space-y-4 rounded-md">
+				{/* Saved Connection Options */}
+				{hasSavedConnection && !showManualForm && (
+					<div className="mb-6 space-y-4">
+						<div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+							<div className="flex items-center mb-3">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									className="mr-2 w-5 h-5 text-blue-600"
+									viewBox="0 0 20 20"
+									fill="currentColor">
+									<path
+										fillRule="evenodd"
+										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+										clipRule="evenodd"
+									/>
+								</svg>
+								<h3 className="text-sm font-medium text-blue-800">
+									Saved Connection Found
+								</h3>
+							</div>
+							<div className="space-y-1 text-sm text-blue-700">
+								<p>
+									<span className="font-medium">Host:</span> {formData.host}
+								</p>
+								<p>
+									<span className="font-medium">Port:</span> {formData.port}
+								</p>
+								<p>
+									<span className="font-medium">Database:</span>{" "}
+									{formData.database}
+								</p>
+								<p>
+									<span className="font-medium">Username:</span>{" "}
+									{formData.username}
+								</p>
+								<p>
+									<span className="font-medium">Password:</span>{" "}
+									{"•".repeat(formData.password.length)}
+								</p>
+							</div>
+						</div>
+
+						<div className="flex gap-2">
+							<button
+								onClick={handleAutoConnect}
+								disabled={autoConnecting}
+								className="flex-1 px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600 disabled:bg-blue-300">
+								{autoConnecting ? (
+									<div className="flex justify-center items-center">
+										<div className="w-5 h-5 rounded-full border-t-2 border-white animate-spin"></div>
+										<span className="ml-2">Connecting...</span>
+									</div>
+								) : (
+									"Connect"
+								)}
+							</button>
+							<button
+								onClick={() => setShowManualForm(true)}
+								className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300">
+								Manual
+							</button>
+						</div>
+
+						<div className="flex justify-center">
+							<button
+								onClick={handleForgetConnection}
+								className="text-sm text-red-600 underline hover:text-red-800">
+								Forget saved connection
+							</button>
+						</div>
+					</div>
+				)}
+
+				{/* Manual Connection Form */}
+				{showManualForm && (
+					<form onSubmit={handleSubmit} className="space-y-4">
 						<div>
-							<label
-								htmlFor="host"
-								className="block text-sm font-medium text-gray-700">
-								Host
-							</label>
+							<label className="block mb-1 text-sm font-medium">Host</label>
 							<input
-								id="host"
-								name="host"
 								type="text"
+								name="host"
 								value={formData.host}
 								onChange={handleChange}
-								className="relative block px-3 py-2 mt-1 w-full text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+								className="p-2 w-full rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								required
 							/>
 						</div>
 
 						<div>
-							<label
-								htmlFor="port"
-								className="block text-sm font-medium text-gray-700">
-								Port
-							</label>
+							<label className="block mb-1 text-sm font-medium">Port</label>
 							<input
-								id="port"
-								name="port"
 								type="text"
+								name="port"
 								value={formData.port}
 								onChange={handleChange}
-								className="relative block px-3 py-2 mt-1 w-full text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+								className="p-2 w-full rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								required
 							/>
 						</div>
 
 						<div>
-							<label
-								htmlFor="database"
-								className="block text-sm font-medium text-gray-700">
-								Database
-							</label>
+							<label className="block mb-1 text-sm font-medium">Database</label>
 							<input
-								id="database"
-								name="database"
 								type="text"
+								name="database"
 								value={formData.database}
 								onChange={handleChange}
-								className="relative block px-3 py-2 mt-1 w-full text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+								className="p-2 w-full rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								required
 							/>
 						</div>
 
 						<div>
-							<label
-								htmlFor="username"
-								className="block text-sm font-medium text-gray-700">
-								Username
-							</label>
+							<label className="block mb-1 text-sm font-medium">Username</label>
 							<input
-								id="username"
-								name="username"
 								type="text"
+								name="username"
 								value={formData.username}
 								onChange={handleChange}
-								className="relative block px-3 py-2 mt-1 w-full text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+								className="p-2 w-full rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								required
 							/>
 						</div>
 
 						<div>
-							<label
-								htmlFor="password"
-								className="block text-sm font-medium text-gray-700">
-								Password
-							</label>
+							<label className="block mb-1 text-sm font-medium">Password</label>
 							<input
-								id="password"
-								name="password"
 								type="password"
+								name="password"
 								value={formData.password}
 								onChange={handleChange}
-								className="relative block px-3 py-2 mt-1 w-full text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+								className="p-2 w-full rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
 								placeholder="Enter your database password"
 							/>
 						</div>
-					</div>
 
-					<div>
-						<button
-							type="submit"
-							disabled={loading}
-							className="group relative flex justify-center py-2 px-4 w-full text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
-							{loading ? (
-								<div className="flex items-center">
-									<svg
-										className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24">
-										<circle
-											className="opacity-25"
-											cx="12"
-											cy="12"
-											r="10"
-											stroke="currentColor"
-											strokeWidth="4"></circle>
-										<path
-											className="opacity-75"
-											fill="currentColor"
-											d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-									</svg>
-									Connecting...
-								</div>
-							) : (
-								<span>Connect to Database</span>
+						{/* Save Connection Checkbox */}
+						<div className="flex items-center">
+							<input
+								type="checkbox"
+								id="saveConnection"
+								name="saveConnection"
+								checked={saveConnection}
+								onChange={handleChange}
+								className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+							/>
+							<label
+								htmlFor="saveConnection"
+								className="ml-2 text-sm text-gray-700">
+								Save connection for next time
+							</label>
+						</div>
+
+						<div className="flex gap-2">
+							<button
+								type="submit"
+								disabled={loading}
+								className="flex-1 px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600 disabled:bg-blue-300">
+								{loading ? (
+									<div className="flex justify-center items-center">
+										<div className="w-5 h-5 rounded-full border-t-2 border-white animate-spin"></div>
+										<span className="ml-2">Connecting...</span>
+									</div>
+								) : (
+									"Connect"
+								)}
+							</button>
+
+							{hasSavedConnection && (
+								<button
+									type="button"
+									onClick={() => setShowManualForm(false)}
+									className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300">
+									Back
+								</button>
 							)}
-						</button>
-					</div>
-				</form>
+						</div>
+					</form>
+				)}
 
 				<div className="mt-6 text-center">
 					<p className="text-xs text-gray-500">

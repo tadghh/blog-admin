@@ -9,7 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import AdminForms from "./AdminForms";
 import EditForms from "./EditForms";
 import Settings from "./settings";
-import DatabaseConnection from "./bootup";
+import DatabaseConnection from "./DatabaseConnection";
 import TagManagement from "./TagManagement";
 import CategoryManagement from "./CategoryManagement";
 import Views from "./Views";
@@ -57,7 +57,7 @@ function App() {
 		<Router>
 			<div className="flex overflow-hidden h-screen bg-gray-50">
 				{/* Sidebar */}
-				<Sidebar />
+				<Sidebar onLogout={() => setIsConnected(false)} />
 
 				{/* Main Content */}
 				<div className="overflow-auto flex-1">

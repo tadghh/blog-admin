@@ -3,11 +3,24 @@ use tauri::Manager;
 use tokio::*;
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct DatabaseConnectionInfo {
+    host: String,
+    port: String,
+    database: String,
+    username: String,
+    password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Settings {
     #[serde(skip_serializing_if = "Option::is_none")]
     blog_images_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     blog_folder_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    database_connection: Option<DatabaseConnectionInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    save_database_connection: Option<bool>,
 }
 
 #[tauri::command]
@@ -28,16 +41,22 @@ pub async fn save_settings(settings: Settings, app: tauri::AppHandle) -> Result<
             Ok(content) => serde_json::from_str(&content).unwrap_or(Settings {
                 blog_images_path: None,
                 blog_folder_path: None,
+                database_connection: None,
+                save_database_connection: None,
             }),
             Err(_) => Settings {
                 blog_images_path: None,
                 blog_folder_path: None,
+                database_connection: None,
+                save_database_connection: None,
             },
         }
     } else {
         Settings {
             blog_images_path: None,
             blog_folder_path: None,
+            database_connection: None,
+            save_database_connection: None,
         }
     };
 
@@ -47,6 +66,17 @@ pub async fn save_settings(settings: Settings, app: tauri::AppHandle) -> Result<
     }
     if let Some(folder_path) = settings.blog_folder_path {
         current_settings.blog_folder_path = Some(folder_path);
+    }
+    if let Some(db_connection) = settings.database_connection {
+        current_settings.database_connection = Some(db_connection);
+    }
+    if let Some(save_db_connection) = settings.save_database_connection {
+        current_settings.save_database_connection = Some(save_db_connection);
+
+        // If user doesn't want to save connection, clear it
+        if !save_db_connection {
+            current_settings.database_connection = None;
+        }
     }
 
     // Write updated settings back to file
@@ -72,6 +102,8 @@ pub async fn load_settings(app: tauri::AppHandle) -> Result<Settings, String> {
         return Ok(Settings {
             blog_images_path: Some(String::new()),
             blog_folder_path: Some(String::new()),
+            database_connection: None,
+            save_database_connection: None,
         });
     }
 

@@ -4,19 +4,32 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { LoadingSpinner, ContentCard } from "./components";
 import { Notification } from "./components/index";
 
+interface DatabaseConnectionInfo {
+	host: string;
+	port: string;
+	database: string;
+	username: string;
+	password: string;
+}
+
 interface Settings {
 	blog_images_path: string | null;
 	blog_folder_path: string | null;
+	database_connection?: DatabaseConnectionInfo | null;
+	save_database_connection?: boolean | null;
 }
 
 export default function SettingsPage() {
 	const [settings, setSettings] = useState<Settings>({
 		blog_images_path: "",
 		blog_folder_path: "",
+		database_connection: null,
+		save_database_connection: false,
 	});
 	const [loading, setLoading] = useState(true);
 	const [savingImages, setSavingImages] = useState(false);
 	const [savingFiles, setSavingFiles] = useState(false);
+	const [clearingConnection, setClearingConnection] = useState(false);
 	const [error, setError] = useState("");
 	const [successMessage, setSuccessMessage] = useState("");
 
@@ -92,6 +105,30 @@ export default function SettingsPage() {
 		}
 	};
 
+	const clearSavedConnection = async () => {
+		setClearingConnection(true);
+		try {
+			await invoke("save_settings", {
+				settings: {
+					database_connection: null,
+					save_database_connection: false,
+				},
+			});
+
+			setSettings((prev) => ({
+				...prev,
+				database_connection: null,
+				save_database_connection: false,
+			}));
+
+			setSuccessMessage("Saved database connection cleared successfully!");
+		} catch (err) {
+			setError(`Failed to clear saved connection: ${err}`);
+		} finally {
+			setClearingConnection(false);
+		}
+	};
+
 	if (loading && !settings.blog_images_path && !settings.blog_folder_path) {
 		return <LoadingSpinner />;
 	}
@@ -114,7 +151,122 @@ export default function SettingsPage() {
 				onDismiss={() => setSuccessMessage("")}
 			/>
 
-			{/* Settings Form */}
+			{/* Database Connection Settings */}
+			<ContentCard>
+				<div className="p-6">
+					<div className="space-y-6">
+						<div>
+							<h3 className="text-lg font-medium text-gray-900">
+								Database Connection
+							</h3>
+							<p className="mt-1 text-sm text-gray-500">
+								Manage your saved database connection settings
+							</p>
+						</div>
+
+						{settings.database_connection &&
+						settings.save_database_connection ? (
+							<div className="p-4 bg-green-50 rounded-lg border border-green-200">
+								<div className="flex justify-between items-start">
+									<div>
+										<div className="flex items-center mb-2">
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												className="mr-2 w-5 h-5 text-green-600"
+												viewBox="0 0 20 20"
+												fill="currentColor">
+												<path
+													fillRule="evenodd"
+													d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+													clipRule="evenodd"
+												/>
+											</svg>
+											<span className="text-sm font-medium text-green-800">
+												Saved Connection Found
+											</span>
+										</div>
+										<div className="space-y-1 text-sm text-green-700">
+											<p>
+												<span className="font-medium">Host:</span>{" "}
+												{settings.database_connection.host}
+											</p>
+											<p>
+												<span className="font-medium">Port:</span>{" "}
+												{settings.database_connection.port}
+											</p>
+											<p>
+												<span className="font-medium">Database:</span>{" "}
+												{settings.database_connection.database}
+											</p>
+											<p>
+												<span className="font-medium">Username:</span>{" "}
+												{settings.database_connection.username}
+											</p>
+											<p>
+												<span className="font-medium">Password:</span>{" "}
+												{"•".repeat(
+													settings.database_connection.password.length
+												)}
+											</p>
+										</div>
+									</div>
+									<button
+										onClick={clearSavedConnection}
+										disabled={clearingConnection}
+										className="px-3 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50">
+										{clearingConnection ? (
+											<>
+												<svg
+													className="inline mr-2 w-4 h-4 animate-spin"
+													xmlns="http://www.w3.org/2000/svg"
+													fill="none"
+													viewBox="0 0 24 24">
+													<circle
+														className="opacity-25"
+														cx="12"
+														cy="12"
+														r="10"
+														stroke="currentColor"
+														strokeWidth="4"></circle>
+													<path
+														className="opacity-75"
+														fill="currentColor"
+														d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+												</svg>
+												Clearing...
+											</>
+										) : (
+											"Clear Saved Connection"
+										)}
+									</button>
+								</div>
+							</div>
+						) : (
+							<div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+								<div className="flex items-center">
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										className="mr-2 w-5 h-5 text-gray-500"
+										viewBox="0 0 20 20"
+										fill="currentColor">
+										<path
+											fillRule="evenodd"
+											d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+											clipRule="evenodd"
+										/>
+									</svg>
+									<span className="text-sm text-gray-700">
+										No saved database connection. You can save your connection
+										details on the next login for convenience.
+									</span>
+								</div>
+							</div>
+						)}
+					</div>
+				</div>
+			</ContentCard>
+
+			{/* Directory Settings */}
 			<ContentCard>
 				<div className="p-6">
 					<div className="space-y-6">
@@ -266,6 +418,48 @@ export default function SettingsPage() {
 					<div className="space-y-3">
 						<div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
 							<span className="text-sm font-medium text-gray-700">
+								Database Connection
+							</span>
+							<div className="flex items-center">
+								{settings.database_connection &&
+								settings.save_database_connection ? (
+									<>
+										<svg
+											className="mr-2 w-5 h-5 text-green-500"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor">
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M5 13l4 4L19 7"
+											/>
+										</svg>
+										<span className="text-sm text-green-600">Saved</span>
+									</>
+								) : (
+									<>
+										<svg
+											className="mr-2 w-5 h-5 text-gray-400"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor">
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M20 12H4"
+											/>
+										</svg>
+										<span className="text-sm text-gray-500">Not Saved</span>
+									</>
+								)}
+							</div>
+						</div>
+
+						<div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+							<span className="text-sm font-medium text-gray-700">
 								Blog Images Directory
 							</span>
 							<div className="flex items-center">
@@ -356,6 +550,25 @@ export default function SettingsPage() {
 						Tips & Information
 					</h3>
 					<div className="space-y-4">
+						<div className="flex">
+							<div className="flex-shrink-0">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									className="w-5 h-5 text-blue-500"
+									viewBox="0 0 20 20"
+									fill="currentColor">
+									<path
+										fillRule="evenodd"
+										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+										clipRule="evenodd"
+									/>
+								</svg>
+							</div>
+							<p className="ml-3 text-sm text-gray-600">
+								Database connection settings are saved locally and encrypted.
+								You can clear them at any time from this page.
+							</p>
+						</div>
 						<div className="flex">
 							<div className="flex-shrink-0">
 								<svg

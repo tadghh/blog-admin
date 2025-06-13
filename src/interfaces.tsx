@@ -34,9 +34,19 @@ export interface Project {
 	license: string | null;
 }
 
+export interface DatabaseConnectionInfo {
+	host: string;
+	port: string;
+	database: string;
+	username: string;
+	password: string;
+}
+
 export interface Settings {
 	blog_images_path: string | null;
 	blog_folder_path: string | null;
+	database_connection?: DatabaseConnectionInfo | null;
+	save_database_connection?: boolean | null;
 }
 
 export interface DatabaseConnectionProps {
